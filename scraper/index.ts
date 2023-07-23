@@ -1,6 +1,10 @@
 import { z } from "zod";
+import dotenv from "dotenv";
+import { sql } from "@vercel/postgres";
 
-const url = "https://public.radio.co/api/v2/s4d14b9fcc/track/current";
+dotenv.config();
+
+const url = process.env.STATION_URL_RAS_2;
 
 const schema = z.object({
   data: z.object({
@@ -18,6 +22,10 @@ const getSong = async () => {
 const init = async () => {
   const song = await getSong();
   const parsed = schema.parse(song);
+
+  const { rows } = await sql`SELECT * from artists`;
+
+  console.log(rows);
 };
 
 init();
