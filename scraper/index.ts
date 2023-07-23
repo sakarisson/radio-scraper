@@ -95,8 +95,6 @@ const run = async () => {
 
   const mostRecentSongInStation = await getMostRecentSongId(stationId);
 
-  console.log({ mostRecentSongInStation, songId });
-
   if (mostRecentSongInStation === songId) {
     console.log("No new song");
     return;
