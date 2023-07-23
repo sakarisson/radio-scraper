@@ -102,7 +102,9 @@ const run = async () => {
 
   await sql`insert into plays (song_id, station_id) values (${songId}, ${stationId})`;
 
-  console.log(`Added ${normalized.title} to the database`);
+  console.log(
+    `Added ${normalized.artist} - ${normalized.title} to the database`,
+  );
 };
 
 run();
