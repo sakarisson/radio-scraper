@@ -1,24 +1,18 @@
 import dotenv from "dotenv";
 import { z } from "zod";
 
+import { PlayingEvent, StationSlug } from "./types";
+
 dotenv.config();
 
-type PlayingEvent = {
-  artist: string;
-  title: string;
-};
-
-type StationSlug = "ras2";
-
-export const unnamedThing: {
-  [key in StationSlug]: {
-    url: string;
-    convert: (data: unknown) => PlayingEvent;
-  };
-} = {
-  ras2: {
+export const stationConfigs: Array<{
+  url: string;
+  convert: (data: unknown) => PlayingEvent;
+  slug: StationSlug;
+}> = [
+  {
     url: process.env.STATION_URL_RAS_2,
-    convert: (data) => {
+    convert: (data: unknown) => {
       const schema = z.object({
         data: z.object({
           title: z.string(),
@@ -33,5 +27,6 @@ export const unnamedThing: {
         title: parsed.data.title.split(" - ")[1],
       };
     },
+    slug: "ras2",
   },
-};
+];

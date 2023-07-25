@@ -1,25 +1,10 @@
-import { z } from "zod";
 import dotenv from "dotenv";
 import { sql } from "@vercel/postgres";
 import { kv } from "@vercel/kv";
-import { unnamedThing } from "./utils";
+import { stationConfigs } from "./utils";
+import { PlayingEvent, StationSlug } from "./types";
 
 dotenv.config();
-
-const url = process.env.STATION_URL_RAS_2;
-
-const schema = z.object({
-  data: z.object({
-    title: z.string(),
-    start_time: z.string(),
-  }),
-});
-
-const getSong = async () => {
-  const response = await fetch(url);
-  const data = await response.json();
-  return data;
-};
 
 const getOrCreateArtistId = async (artistName: string): Promise<number> => {
   const {
@@ -80,18 +65,28 @@ const getMostRecentSongId = async (
   return maybePlay?.song_id ?? null;
 };
 
-const run = async (station: "ras2") => {
-  const stationId = await getStationId(station);
+const run = async ({
+  slug,
+  convert,
+  url,
+}: {
+  url: string;
+  convert: (data: unknown) => PlayingEvent;
+  slug: StationSlug;
+}) => {
+  const stationId = await getStationId(slug);
 
-  const mostRecentValue = await kv.get(`${station}-most-recent`);
+  const mostRecentKey = `${slug}-most-recent`;
 
-  const response = await fetch(unnamedThing.ras2.url);
+  const mostRecentValue = await kv.get(mostRecentKey);
+
+  const response = await fetch(url);
   const data = await response.json();
-  const normalized = unnamedThing.ras2.convert(data);
+  const normalized = convert(data);
 
   const nameAndTitle = `${normalized.artist} - ${normalized.title}`;
 
-  await kv.set(`${station}-most-recent`, nameAndTitle, { ex: 120 });
+  await kv.set(mostRecentKey, nameAndTitle, { ex: 120 });
 
   if (mostRecentValue === nameAndTitle) {
     console.log("Song found in cache, not adding to database");
@@ -121,7 +116,7 @@ const run = async (station: "ras2") => {
   );
 };
 
-run("ras2");
+stationConfigs.forEach((stationData) => run(stationData));
 
 export const setupDatabase = async () => {
   await sql`create table if not exists stations (
