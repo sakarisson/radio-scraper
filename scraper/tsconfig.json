@@ -3,6 +3,8 @@
     "ts-node": {
       "transpileOnly": true,
       "files": true,
+      "esm": true,
+      "experimentalSpecifierResolution": "node",
       "compilerOptions": {
         // compilerOptions specified here will override those declared below,
         // but *only* in ts-node.  Useful if you want ts-node and tsc to use
@@ -10,6 +12,12 @@
       }
     },
     "compilerOptions": {
-      "lib": ["es2020", "DOM"],
+      "lib": ["DOM"],
+      "module": "ESNext",
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "moduleResolution": "node"
     },
+    "include": ["/**/*.ts"],
+    "exclude": ["node_modules"]
   }
