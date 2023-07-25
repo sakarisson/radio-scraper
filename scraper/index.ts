@@ -100,7 +100,7 @@ const run = async () => {
     return;
   }
 
-  await sql`insert into plays (song_id, station_id) values (${songId}, ${stationId})`;
+  await sql`insert into plays (song_id, station_id, played_at) values (${songId}, ${stationId}, now())`;
 
   console.log(
     `Added ${normalized.artist} - ${normalized.title} to the database`,
@@ -108,3 +108,30 @@ const run = async () => {
 };
 
 run();
+
+export const setupDatabase = async () => {
+  await sql`create table if not exists stations (
+    id serial primary key,
+    slug varchar(255) not null unique
+  )`;
+
+  await sql`create table if not exists artists (
+    id serial primary key,
+    name varchar(255) not null unique
+  )`;
+
+  await sql`create table if not exists songs (
+    id serial primary key,
+    title varchar(255) not null,
+    artist_id integer references artists(id)
+  )`;
+
+  await sql`create table if not exists plays (
+    id serial primary key,
+    song_id integer references songs(id),
+    station_id integer references stations(id),
+    played_at timestamp not null
+  )`;
+};
+
+// setupDatabase();
