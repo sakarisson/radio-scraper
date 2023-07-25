@@ -141,6 +141,10 @@ export const setupDatabase = async () => {
     station_id integer references stations(id),
     played_at timestamp not null
   )`;
+
+  // await sql`insert into stations (slug) values ${stationConfigs
+  //   .map((config) => `('${config.slug}')`)
+  //   .join(", ")} on conflict do nothing;`;
 };
 
 // setupDatabase();
