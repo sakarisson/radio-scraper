@@ -1,6 +1,7 @@
 import { z } from "zod";
 import dotenv from "dotenv";
 import { sql } from "@vercel/postgres";
+import { kv } from "@vercel/kv";
 import { unnamedThing } from "./utils";
 
 dotenv.config();
@@ -79,12 +80,23 @@ const getMostRecentSongId = async (
   return maybePlay?.song_id ?? null;
 };
 
-const run = async () => {
-  const stationId = await getStationId("ras2");
+const run = async (station: "ras2") => {
+  const stationId = await getStationId(station);
+
+  const mostRecentValue = await kv.get(`${station}-most-recent`);
 
   const response = await fetch(unnamedThing.ras2.url);
   const data = await response.json();
   const normalized = unnamedThing.ras2.convert(data);
+
+  const nameAndTitle = `${normalized.artist} - ${normalized.title}`;
+
+  await kv.set(`${station}-most-recent`, nameAndTitle, { ex: 120 });
+
+  if (mostRecentValue === nameAndTitle) {
+    console.log("Song found in cache, not adding to database");
+    return;
+  }
 
   const artistId = await getOrCreateArtistId(normalized.artist);
 
@@ -93,11 +105,13 @@ const run = async () => {
     artistId,
   });
 
-  const mostRecentSongInStation = await getMostRecentSongId(stationId);
+  if (mostRecentValue === null) {
+    const mostRecentSongInStation = await getMostRecentSongId(stationId);
 
-  if (mostRecentSongInStation === songId) {
-    console.log("No new song");
-    return;
+    if (mostRecentSongInStation === songId) {
+      console.log("Song found in database, not adding to database");
+      return;
+    }
   }
 
   await sql`insert into plays (song_id, station_id, played_at) values (${songId}, ${stationId}, now())`;
@@ -107,7 +121,7 @@ const run = async () => {
   );
 };
 
-run();
+run("ras2");
 
 export const setupDatabase = async () => {
   await sql`create table if not exists stations (
