@@ -5,8 +5,6 @@ export default async function handler(
   request: NextApiRequest,
   response: NextApiResponse,
 ) {
-  console.log(request);
-
   return updateSongs()
     .then((result) => {
       response.status(200).json({

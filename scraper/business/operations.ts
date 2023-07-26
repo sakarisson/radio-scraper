@@ -23,7 +23,7 @@ const getOrCreateArtistId = async (artistName: string): Promise<number> => {
   return definitelyArtist.id;
 };
 
-const getOrCreateSongId = async ({
+export const getOrCreateSongId = async ({
   songName,
   artistId,
 }: {
