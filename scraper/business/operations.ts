@@ -1,8 +1,9 @@
-import dotenv from "dotenv";
 import { sql } from "@vercel/postgres";
 import { kv } from "@vercel/kv";
 import { stationConfigs } from "./utils";
 import { PlayingEvent, StationSlug } from "./types";
+
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -89,8 +90,7 @@ const run = async ({
   await kv.set(mostRecentKey, nameAndTitle, { ex: 120 });
 
   if (mostRecentValue === nameAndTitle) {
-    console.log("Song found in cache, not adding to database");
-    return;
+    throw "Song found in cache, not adding to database";
   }
 
   const artistId = await getOrCreateArtistId(normalized.artist);
@@ -104,19 +104,17 @@ const run = async ({
     const mostRecentSongInStation = await getMostRecentSongId(stationId);
 
     if (mostRecentSongInStation === songId) {
-      console.log("Song found in database, not adding to database");
-      return;
+      throw "Song found in database, not adding to database";
     }
   }
 
   await sql`insert into plays (song_id, station_id, played_at) values (${songId}, ${stationId}, now())`;
 
-  console.log(
-    `Added ${normalized.artist} - ${normalized.title} to the database`,
-  );
+  return `Added ${normalized.artist} - ${normalized.title} to the database`;
 };
 
-stationConfigs.forEach((stationData) => run(stationData));
+export const updateSongs = () =>
+  Promise.all(stationConfigs.map((stationData) => run(stationData)));
 
 export const setupDatabase = async () => {
   await sql`create table if not exists stations (

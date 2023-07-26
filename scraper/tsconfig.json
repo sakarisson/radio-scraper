@@ -1,23 +1,35 @@
 {
-    "extends": "@tsconfig/node18/tsconfig.json",
-    "ts-node": {
-      "transpileOnly": true,
-      "files": true,
-      "esm": true,
-      "experimentalSpecifierResolution": "node",
-      "compilerOptions": {
-        // compilerOptions specified here will override those declared below,
-        // but *only* in ts-node.  Useful if you want ts-node and tsc to use
-        // different options with a single tsconfig.json.
-      }
-    },
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "ts-node": {
+    "transpileOnly": true,
+    "files": true,
+    "esm": true,
+    "experimentalSpecifierResolution": "node",
     "compilerOptions": {
-      "lib": ["DOM"],
-      "module": "ESNext",
-      "esModuleInterop": true,
-      "allowSyntheticDefaultImports": true,
-      "moduleResolution": "node"
-    },
-    "include": ["/**/*.ts"],
-    "exclude": ["node_modules"]
-  }
+      // compilerOptions specified here will override those declared below,
+      // but *only* in ts-node.  Useful if you want ts-node and tsc to use
+      // different options with a single tsconfig.json.
+    }
+  },
+  "compilerOptions": {
+    "lib": [
+      "DOM"
+    ],
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

@@ -1,9 +1,6 @@
-import dotenv from "dotenv";
 import { z } from "zod";
 
 import { PlayingEvent, StationSlug } from "./types";
-
-dotenv.config();
 
 export const stationConfigs: Array<{
   url: string;
