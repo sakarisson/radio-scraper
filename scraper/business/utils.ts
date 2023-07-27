@@ -8,7 +8,7 @@ export const stationConfigs: Array<{
   slug: StationSlug;
 }> = [
   {
-    url: process.env.STATION_URL_RAS_2,
+    url: "https://public.radio.co/api/v2/s4d14b9fcc/track/current",
     convert: (data: unknown) => {
       const schema = z.object({
         data: z.object({

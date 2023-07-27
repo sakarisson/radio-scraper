@@ -2,10 +2,43 @@ import { sql } from "@vercel/postgres";
 import { kv } from "@vercel/kv";
 import { stationConfigs } from "./utils";
 import { PlayingEvent, StationSlug } from "./types";
-
 import dotenv from "dotenv";
+import { cachedEvent } from "./schema";
 
 dotenv.config();
+
+const getStationCacheKey = (station: StationSlug) => `${station}-cache`;
+
+const getMostRecentEventFromCache = async (station: StationSlug) => {
+  const key = getStationCacheKey(station);
+
+  const mostRecent = await kv.lindex(key, 0);
+
+  const parsed = cachedEvent.parse(mostRecent);
+
+  if (!parsed) {
+    return null;
+  }
+
+  return parsed;
+};
+
+export const saveEventToCache = async ({
+  station,
+  artist,
+  title,
+  played_at = new Date().toISOString(),
+}: {
+  station: StationSlug;
+  artist: string;
+  title: string;
+  played_at?: string;
+}) => {
+  const key = getStationCacheKey(station);
+  const value = { artist, title, played_at };
+
+  await kv.lpush(key, value);
+};
 
 const getOrCreateArtistId = async (artistName: string): Promise<number> => {
   const {
@@ -77,21 +110,28 @@ const run = async ({
 }) => {
   const stationId = await getStationId(slug);
 
-  const mostRecentKey = `${slug}-most-recent`;
-
-  const mostRecentValue = await kv.get(mostRecentKey);
+  const mostRecentValue = await getMostRecentEventFromCache(slug);
 
   const response = await fetch(url);
   const data = await response.json();
   const normalized = convert(data);
 
-  const nameAndTitle = `${normalized.artist} - ${normalized.title}`;
-
-  await kv.set(mostRecentKey, nameAndTitle, { ex: 120 });
-
-  if (mostRecentValue === nameAndTitle) {
-    throw "Song found in cache, not adding to database";
+  if (
+    mostRecentValue &&
+    mostRecentValue.artist === normalized.artist &&
+    mostRecentValue.title === normalized.title
+  ) {
+    console.log("Song found in cache");
+  } else {
+    await saveEventToCache({
+      station: slug,
+      artist: normalized.artist,
+      title: normalized.title,
+    });
+    console.log("Saved to cache");
   }
+
+  return;
 
   const artistId = await getOrCreateArtistId(normalized.artist);
 
@@ -112,6 +152,8 @@ const run = async ({
 
   return `Added ${normalized.artist} - ${normalized.title} to the database`;
 };
+
+run(stationConfigs[0]);
 
 export const updateSongs = () =>
   Promise.all(stationConfigs.map((stationData) => run(stationData)));
