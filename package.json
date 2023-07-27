@@ -9,7 +9,20 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@tsconfig/node18": "^18.2.0",
+    "@types/eventsource": "^1.1.11",
+    "@vercel/kv": "^0.2.2",
+    "@vercel/postgres": "^0.4.0",
+    "dotenv": "^16.3.1",
+    "eventsource": "^2.0.2",
+    "next": "^13.4.12",
+    "ts-node": "^10.9.1",
+    "zod": "^3.21.4"
+  },
   "devDependencies": {
-    "prettier": "3.0.0"
+    "@types/react": "18.2.16",
+    "prettier": "^3.0.0"
   }
 }

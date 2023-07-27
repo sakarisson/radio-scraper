@@ -3,7 +3,7 @@ import { updateSongs } from "../../business/operations";
 
 export default async function handler(
   request: NextApiRequest,
-  response: NextApiResponse,
+  response: NextApiResponse
 ) {
   return updateSongs()
     .then((result) => {
