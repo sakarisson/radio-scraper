@@ -1,29 +1,67 @@
-import { z } from "zod";
-
-import { PlayingEvent, StationSlug } from "./types";
+import { z } from 'zod';
+import EventSource from 'eventsource';
+import { PlayingEvent, StationSlug } from './types';
 
 export const stationConfigs: Array<{
-  url: string;
-  convert: (data: unknown) => PlayingEvent;
+  fetchData: () => Promise<PlayingEvent>;
   slug: StationSlug;
 }> = [
   {
-    url: "https://public.radio.co/api/v2/s4d14b9fcc/track/current",
-    convert: (data: unknown) => {
+    slug: 'ras2',
+    fetchData: async () => {
+      const url = process.env.STATION_URL_RAS_2;
+
+      const data = await fetch(url).then((response) => response.json());
+
       const schema = z.object({
         data: z.object({
           title: z.string(),
-          start_time: z.string(),
         }),
       });
 
       const parsed = schema.parse(data);
 
       return {
-        artist: parsed.data.title.split(" - ")[0],
-        title: parsed.data.title.split(" - ")[1],
+        artist: parsed.data.title.split(' - ')[0],
+        title: parsed.data.title.split(' - ')[1],
       };
     },
-    slug: "ras2",
+  },
+  {
+    slug: 'kvf',
+    fetchData: async () => {
+      const evtSource = new EventSource(process.env.STATION_URL_KVF);
+
+      const schema = z.object({
+        radiotext: z.object({
+          artist: z.string().optional(),
+          title: z.string().optional(),
+        }),
+      });
+
+      return new Promise((resolve, reject) => {
+        evtSource.onmessage = (event) => {
+          const {
+            radiotext: { artist, title },
+          } = schema.parse(event.data);
+
+          if (!artist || !title) {
+            reject(new Error('No artist or title'));
+          } else {
+            resolve({
+              artist,
+              title,
+            });
+          }
+
+          evtSource.close();
+        };
+        evtSource.onerror = (err) => {
+          reject(err);
+
+          evtSource.close();
+        };
+      });
+    },
   },
 ];

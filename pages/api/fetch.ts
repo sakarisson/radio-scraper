@@ -1,5 +1,5 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { updateSongs } from "../../business/operations";
+import { NextApiRequest, NextApiResponse } from 'next';
+import { updateSongs } from '../../business/operations';
 
 export default async function handler(
   request: NextApiRequest,

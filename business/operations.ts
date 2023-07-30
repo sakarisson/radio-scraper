@@ -1,9 +1,9 @@
-import { sql } from "@vercel/postgres";
-import { kv } from "@vercel/kv";
-import { stationConfigs } from "./utils";
-import { PlayingEvent, StationSlug } from "./types";
-import dotenv from "dotenv";
-import { cachedEvent } from "./schema";
+import { sql } from '@vercel/postgres';
+import { kv } from '@vercel/kv';
+import { stationConfigs } from './utils';
+import { PlayingEvent, StationSlug } from './types';
+import dotenv from 'dotenv';
+import { cachedEvent } from './schema';
 
 dotenv.config();
 
@@ -89,7 +89,7 @@ const getStationId = async (stationSlug: string): Promise<number> => {
 };
 
 const getMostRecentSongId = async (
-  stationId: number,
+  stationId: number
 ): Promise<number | null> => {
   const {
     rows: [maybePlay],
@@ -101,42 +101,38 @@ const getMostRecentSongId = async (
 
 const run = async ({
   slug,
-  convert,
-  url,
+  fetchData,
 }: {
-  url: string;
-  convert: (data: unknown) => PlayingEvent;
+  fetchData: () => Promise<PlayingEvent>;
   slug: StationSlug;
 }) => {
   const stationId = await getStationId(slug);
 
   const mostRecentValue = await getMostRecentEventFromCache(slug);
 
-  const response = await fetch(url);
-  const data = await response.json();
-  const normalized = convert(data);
+  const { artist, title } = await fetchData();
 
   if (
     mostRecentValue &&
-    mostRecentValue.artist === normalized.artist &&
-    mostRecentValue.title === normalized.title
+    mostRecentValue.artist === artist &&
+    mostRecentValue.title === title
   ) {
-    console.log("Song found in cache");
+    throw `No new song for ${slug}`;
   } else {
     await saveEventToCache({
       station: slug,
-      artist: normalized.artist,
-      title: normalized.title,
+      artist: artist,
+      title: title,
     });
-    console.log("Saved to cache");
+    console.log(`New song for ${slug}: ${artist} - ${title}`);
   }
 
   return;
 
-  const artistId = await getOrCreateArtistId(normalized.artist);
+  const artistId = await getOrCreateArtistId(artist);
 
   const songId = await getOrCreateSongId({
-    songName: normalized.title,
+    songName: title,
     artistId,
   });
 
@@ -144,19 +140,17 @@ const run = async ({
     const mostRecentSongInStation = await getMostRecentSongId(stationId);
 
     if (mostRecentSongInStation === songId) {
-      throw "Song found in database, not adding to database";
+      throw 'Song found in database, not adding to database';
     }
   }
 
   await sql`insert into plays (song_id, station_id, played_at) values (${songId}, ${stationId}, now())`;
 
-  return `Added ${normalized.artist} - ${normalized.title} to the database`;
+  return `Added ${artist} - ${title} to the database`;
 };
 
-run(stationConfigs[0]);
-
 export const updateSongs = () =>
-  Promise.all(stationConfigs.map((stationData) => run(stationData)));
+  Promise.allSettled(stationConfigs.map((stationData) => run(stationData)));
 
 export const setupDatabase = async () => {
   await sql`create table if not exists stations (

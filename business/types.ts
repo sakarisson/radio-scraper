@@ -3,4 +3,4 @@ export type PlayingEvent = {
   title: string;
 };
 
-export type StationSlug = "ras2";
+export type StationSlug = 'ras2' | 'kvf';
