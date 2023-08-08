@@ -21,9 +21,15 @@ export const stationConfigs: Array<{
 
       const parsed = schema.parse(data);
 
+      const [artist, title] = parsed.data.title.split(' - ');
+
+      if (!artist || !title) {
+        throw new Error('No artist or title');
+      }
+
       return {
-        artist: parsed.data.title.split(' - ')[0],
-        title: parsed.data.title.split(' - ')[1],
+        artist,
+        title,
       };
     },
   },
@@ -43,7 +49,7 @@ export const stationConfigs: Array<{
         evtSource.onmessage = (event) => {
           const {
             radiotext: { artist, title },
-          } = schema.parse(event.data);
+          } = schema.parse(JSON.parse(event.data));
 
           if (!artist || !title) {
             reject(new Error('No artist or title'));

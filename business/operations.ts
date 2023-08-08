@@ -14,13 +14,13 @@ const getMostRecentEventFromCache = async (station: StationSlug) => {
 
   const mostRecent = await kv.lindex(key, 0);
 
-  const parsed = cachedEvent.parse(mostRecent);
+  const parsed = cachedEvent.safeParse(mostRecent);
 
-  if (!parsed) {
+  if (!parsed.success) {
     return null;
   }
 
-  return parsed;
+  return parsed.data;
 };
 
 export const saveEventToCache = async ({
