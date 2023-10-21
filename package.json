@@ -13,13 +13,16 @@
   "dependencies": {
     "@vercel/kv": "0.2.2",
     "@vercel/postgres": "0.4.0",
+    "better-sqlite3": "^9.0.0",
     "dotenv": "16.3.1",
     "eventsource": "2.0.2",
     "next": "13.4.12",
+    "sqlite3": "^5.1.6",
     "zod": "3.21.4"
   },
   "devDependencies": {
     "@tsconfig/node18": "18.2.0",
+    "@types/better-sqlite3": "^7.6.6",
     "@types/eventsource": "1.1.11",
     "@types/react": "18.2.16",
     "prettier": "3.0.0",
