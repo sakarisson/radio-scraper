@@ -10,23 +10,18 @@
   "author": "",
   "license": "ISC",
   "type": "module",
-  "dependencies": {
-    "@vercel/kv": "0.2.2",
-    "@vercel/postgres": "0.4.0",
-    "better-sqlite3": "^9.0.0",
-    "dotenv": "16.3.1",
-    "eventsource": "2.0.2",
-    "next": "13.4.12",
-    "sqlite3": "^5.1.6",
-    "zod": "3.21.4"
-  },
   "devDependencies": {
     "@tsconfig/node18": "18.2.0",
     "@types/better-sqlite3": "^7.6.6",
     "@types/eventsource": "1.1.11",
     "@types/react": "18.2.16",
+    "better-sqlite3": "^9.0.0",
+    "dotenv": "16.3.1",
+    "eventsource": "2.0.2",
     "prettier": "3.0.0",
+    "sqlite3": "^5.1.6",
     "ts-node": "10.9.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "zod": "3.21.4"
   }
 }
