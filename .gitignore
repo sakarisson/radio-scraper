@@ -131,3 +131,5 @@ dist
 
 # vercel
 .vercel
+
+database.sqlite

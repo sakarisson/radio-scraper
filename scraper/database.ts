@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { z } from 'zod';
 import { artistRow, songRow, stationRow } from './schema';
 
-const db = new Database('test.db');
+const db = new Database('database.sqlite');
 
 const getOrCreateArtistId = (artistName: string) => {
   const row = db
