@@ -22,6 +22,8 @@ const scrape = () =>
         return;
       }
 
+      console.log(`New play on ${slug}: ${artist} - ${title}`);
+
       insertPlay({
         artistName: artist,
         songName: title,
