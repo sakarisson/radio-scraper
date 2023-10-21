@@ -32,5 +32,5 @@ const scrape = () =>
     })
   );
 
-// run scrape every 30 seconds
+scrape();
 setInterval(scrape, 30 * 1000);
