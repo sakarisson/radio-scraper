@@ -2,7 +2,7 @@ import { z } from 'zod';
 import EventSource from 'eventsource';
 import { PlayingEvent, StationSlug } from './types';
 
-export const stationConfigs: Array<{
+export const fetchers: Array<{
   fetchData: () => Promise<PlayingEvent>;
   slug: StationSlug;
 }> = [
@@ -19,18 +19,29 @@ export const stationConfigs: Array<{
         }),
       });
 
-      const parsed = schema.parse(data);
+      const parsed = schema.safeParse(data);
 
-      const [artist, title] = parsed.data.title.split(' - ');
+      if (!parsed.success) {
+        throw parsed.error;
+      }
 
-      if (!artist || !title) {
+      const [artist, title] = parsed.data.data.title.split(' - ');
+
+      const parsedAgain = z
+        .object({
+          artist: z.string(),
+          title: z.string(),
+        })
+        .safeParse({
+          artist,
+          title,
+        });
+
+      if (!parsedAgain.success) {
         throw new Error('No artist or title');
       }
 
-      return {
-        artist,
-        title,
-      };
+      return parsedAgain.data;
     },
   },
   {
