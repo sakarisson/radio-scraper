@@ -149,6 +149,32 @@ const run = async ({
   return `Added ${artist} - ${title} to the database`;
 };
 
+export const saveFromKvToDb = async (station: StationSlug) => {
+  const key = getStationCacheKey(station);
+
+  const cachedEvents = await kv.lrange(key, 0, -1);
+
+  const parsed = cachedEvent.array().safeParse(cachedEvents);
+
+  if (!parsed.success) {
+    throw parsed.error;
+  }
+
+  const newArtists =
+    await sql`select * from artists where name not in (${parsed.data
+      .map((event) => `'${event.artist}'`)
+      .join(', ')})`;
+
+  console.log(newArtists);
+
+  const newSongs =
+    await sql`select * from songs where title not in (${parsed.data
+      .map((event) => `'${event.title}'`)
+      .join(', ')})`;
+
+  // console.log(...parsed.data.reverse());
+};
+
 export const updateSongs = () =>
   Promise.allSettled(stationConfigs.map((stationData) => run(stationData)));
 
