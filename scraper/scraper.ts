@@ -33,4 +33,4 @@ const scrape = () =>
   );
 
 scrape();
-setInterval(scrape, 30 * 1000);
+setInterval(scrape, 10 * 1000);
