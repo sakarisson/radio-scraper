@@ -41,7 +41,7 @@ export const fetchers: Array<{
         throw new Error('No artist or title');
       }
 
-      return parsedAgain.data;
+      return { ...parsedAgain.data, rawData: data };
     },
   },
   {
@@ -68,6 +68,7 @@ export const fetchers: Array<{
             resolve({
               artist,
               title,
+              rawData: event.data,
             });
           }
 

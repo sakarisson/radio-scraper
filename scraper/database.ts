@@ -84,6 +84,11 @@ export const setupDatabase = () => {
       station_id integer not null references stations(id),
       time_played timestamp default (datetime('now'))
     );
+    create table if not exists raw_play_data (
+      id integer primary key,
+      play_id integer not null references plays(id),
+      raw_data blob not null
+    );
   `);
 };
 
@@ -123,7 +128,25 @@ export const getMostRecentPlay = (stationSlug: string) => {
   return null;
 };
 
-type GetOrCreatePlay = {
+type InsertRawData = {
+  playId: bigint | number;
+  rawData: unknown;
+};
+
+export const insertRawData = ({ playId, rawData }: InsertRawData) => {
+  // Convert JSON object to string, and then to a Buffer
+  const rawDataBuffer = Buffer.from(JSON.stringify(rawData));
+
+  // Use a prepared statement to insert the data
+  const stmt = db.prepare(
+    `INSERT INTO raw_play_data (play_id, raw_data) VALUES (?, ?)`
+  );
+  const info = stmt.run(playId, rawDataBuffer);
+
+  return info;
+};
+
+type CreatePlay = {
   songName: string;
   artistName: string;
   stationSlug: string;
@@ -133,7 +156,7 @@ export const insertPlay = ({
   songName,
   artistName,
   stationSlug,
-}: GetOrCreatePlay) => {
+}: CreatePlay) => {
   const artistId = getOrCreateArtistId(artistName);
   const songId = getOrCreateSongId({ songName, artistId });
   const stationId = getOrCreateStationId(stationSlug);

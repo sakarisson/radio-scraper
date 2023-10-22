@@ -1,4 +1,9 @@
-import { getMostRecentPlay, insertPlay, setupDatabase } from './database';
+import {
+  getMostRecentPlay,
+  insertPlay,
+  insertRawData,
+  setupDatabase,
+} from './database';
 import { fetchers } from './fetchers';
 import dotenv from 'dotenv';
 
@@ -10,7 +15,7 @@ const scrape = () =>
   Promise.allSettled(
     fetchers.map(async (fetcher) => {
       const { slug, fetchData } = fetcher;
-      const { artist, title } = await fetchData();
+      const { artist, title, rawData } = await fetchData();
 
       const mostRecentPlay = getMostRecentPlay(slug);
 
@@ -24,11 +29,13 @@ const scrape = () =>
 
       console.log(`New play on ${slug}: ${artist} - ${title}`);
 
-      insertPlay({
+      const playId = insertPlay({
         artistName: artist,
         songName: title,
         stationSlug: slug,
       });
+
+      insertRawData({ playId, rawData });
     })
   );
 
