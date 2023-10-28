@@ -1,6 +1,6 @@
 import { PlayingEvent } from './types';
 
-const trimWhitespace = (str: string) => str.replace(/\s+/g, ' ').trim();
+const trimWhitespace = (str: string) => str.trim();
 
 export const processPlayingEvent = (event: PlayingEvent) => {
   const artist = trimWhitespace(event.artist);
