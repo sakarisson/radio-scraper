@@ -6,6 +6,7 @@ import {
 } from './database';
 import { fetchers } from './fetchers';
 import dotenv from 'dotenv';
+import { processPlayingEvent } from './processors';
 
 dotenv.config();
 
@@ -15,7 +16,9 @@ const scrape = () =>
   Promise.allSettled(
     fetchers.map(async (fetcher) => {
       const { slug, fetchData } = fetcher;
-      const { artist, title, rawData } = await fetchData();
+      const { artist, title, rawData } = await fetchData().then(
+        processPlayingEvent
+      );
 
       const mostRecentPlay = getMostRecentPlay(slug);
 
