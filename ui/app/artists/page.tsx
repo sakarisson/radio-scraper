@@ -1,18 +1,40 @@
-import Database from "better-sqlite3";
 import { z } from "zod";
 import Link from "next/link";
-import { Fragment } from "react";
 import { database } from "@/utils/database";
 
-export default function Artist({ params }: { params: { slug: string } }) {
+const PAGE_SIZE = 30;
+
+type Props = {
+  searchParams?: unknown;
+};
+
+export default function Artist(props: Props) {
+  const paramsSchema = z
+    .object({
+      page: z.string().regex(/^\d+$/).transform(Number).optional(),
+    })
+    .optional();
+
+  const getOffset = () => {
+    const parsedSearchParams = paramsSchema.safeParse(props.searchParams);
+
+    if (!parsedSearchParams.success) {
+      return 0;
+    }
+
+    return (parsedSearchParams.data?.page ?? 0) * PAGE_SIZE;
+  };
+
   const data = database
     .prepare(
       `
     select id, name from artists
     order by name asc
+    limit 30
+    offset (?)
   `
     )
-    .all();
+    .all(getOffset());
 
   const schema = z.array(
     z.object({
