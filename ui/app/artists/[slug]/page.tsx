@@ -2,6 +2,8 @@ import Database from "better-sqlite3";
 import { z } from "zod";
 import { Fragment } from "react";
 import { database } from "@/utils/database";
+import format from "date-fns/format";
+import { fi } from "date-fns/locale";
 
 export default function Artist({ params }: { params: { slug: string } }) {
   const data = database
@@ -57,7 +59,11 @@ export default function Artist({ params }: { params: { slug: string } }) {
       {parsed.data.map(({ artist, title, time_played, station, id }) => (
         <Fragment key={id}>
           <div>{title}</div>
-          <div>{time_played}</div>
+          <div>
+            {format(new Date(time_played), "PP p", {
+              locale: fi,
+            })}
+          </div>
           <div>{station}</div>
         </Fragment>
       ))}
