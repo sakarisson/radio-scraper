@@ -2,6 +2,13 @@ import { z } from 'zod';
 import EventSource from 'eventsource';
 import { PlayingEvent, StationSlug } from './types';
 
+const ras2Url = process.env.STATION_URL_RAS_2;
+const kvfUrl = process.env.STATION_URL_KVF;
+
+if (!ras2Url || !kvfUrl) {
+  throw new Error('Missing environment variables');
+}
+
 export const fetchers: Array<{
   fetchData: () => Promise<PlayingEvent>;
   slug: StationSlug;
@@ -9,9 +16,7 @@ export const fetchers: Array<{
   {
     slug: 'ras2',
     fetchData: async () => {
-      const url = process.env.STATION_URL_RAS_2;
-
-      const data = await fetch(url).then((response) => response.json());
+      const data = await fetch(ras2Url).then((response) => response.json());
 
       const schema = z.object({
         data: z.object({
@@ -47,7 +52,7 @@ export const fetchers: Array<{
   {
     slug: 'kvf',
     fetchData: async () => {
-      const evtSource = new EventSource(process.env.STATION_URL_KVF);
+      const evtSource = new EventSource(kvfUrl);
 
       const schema = z.object({
         radiotext: z.object({

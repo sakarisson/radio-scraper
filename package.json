@@ -6,6 +6,7 @@
   "scripts": {
     "start:scraper": "cd packages/scraper && ts-node src/scraper.ts",
     "start:web": "cd packages/web-ui && next dev",
-    "build:web": "cd packages/web-ui && next build"
+    "build:web": "cd packages/web-ui && next build",
+    "serve:web": "cd packages/web-ui && next start"
   }
 }
