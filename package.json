@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start:scraper": "cd packages/scraper && ts-node src/scraper.ts",
+    "start:web": "cd packages/web-ui && next dev",
+    "build:web": "cd packages/web-ui && next build"
+  }
+}

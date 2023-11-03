@@ -1,17 +1,8 @@
 {
-  "name": "faroese-radio",
+  "name": "scraper",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
   "devDependencies": {
-    "@tsconfig/node18": "18.2.0",
     "@types/better-sqlite3": "^7.6.6",
     "@types/eventsource": "1.1.11",
     "@types/react": "18.2.16",

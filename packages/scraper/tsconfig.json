@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "ts-node": {
+    "transpileOnly": true,
+    "files": true,
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  },
+  "compilerOptions": {
+    "lib": ["DOM"]
+  },
+  "include": [
+    "**/**.ts",
+    "../environments.d.ts"
+  ]
+}
