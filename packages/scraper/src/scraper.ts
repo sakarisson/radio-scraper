@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import {
   getMostRecentPlay,
   insertPlay,
@@ -5,10 +8,7 @@ import {
   setupDatabase,
 } from './database';
 import { fetchers } from './fetchers';
-import dotenv from 'dotenv';
 import { processPlayingEvent } from './processors';
-
-dotenv.config();
 
 setupDatabase();
 

@@ -133,3 +133,4 @@ dist
 .vercel
 
 database.sqlite
+.DS_Store
