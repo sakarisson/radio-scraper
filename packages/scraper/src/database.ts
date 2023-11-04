@@ -1,66 +1,108 @@
 import Database from 'better-sqlite3';
-import { z } from 'zod';
-import { artistRow, songRow, stationRow } from './schema';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
+import { and, desc, eq } from 'drizzle-orm';
 
 const db = new Database('database.sqlite');
 
+const drizzledb = drizzle(db);
+
+const artistsDrizzleSchema = sqliteTable('artists', {
+  id: integer('id').primaryKey(),
+  name: text('name').notNull(),
+});
+
+const songsDrizzleSchema = sqliteTable('songs', {
+  id: integer('id').primaryKey(),
+  title: text('title').notNull(),
+  artistId: integer('artist_id').notNull(),
+});
+
+const stationsDrizzleSchema = sqliteTable('stations', {
+  id: integer('id').primaryKey(),
+  slug: text('slug').notNull(),
+});
+
+const playsDrizzleSchema = sqliteTable('plays', {
+  id: integer('id').primaryKey(),
+  songId: integer('song_id').notNull(),
+  stationId: integer('station_id').notNull(),
+  timePlayed: text('time_played').default('datetime("now")'),
+});
+
+const rawPlayDataDrizzleSchema = sqliteTable('raw_play_data', {
+  id: integer('id').primaryKey(),
+  playId: integer('play_id').notNull(),
+  rawData: text('raw_data').notNull(),
+});
+
 const getOrCreateArtistId = (artistName: string) => {
-  const row = db
-    .prepare('select * from artists where name = (?)')
-    .get(artistName);
+  const data = drizzledb
+    .select()
+    .from(artistsDrizzleSchema)
+    .where(eq(artistsDrizzleSchema.name, artistName))
+    .get();
 
-  const parsed = artistRow.safeParse(row);
-
-  if (parsed.success) {
-    return parsed.data.id;
+  if (data) {
+    return data.id;
   }
 
-  const definitelyArtist = db
-    .prepare('insert into artists (name) values (?)')
-    .run(artistName);
+  const definitelyArtist = drizzledb
+    .insert(artistsDrizzleSchema)
+    .values({ name: artistName })
+    .run();
 
-  return definitelyArtist.lastInsertRowid;
+  return definitelyArtist.lastInsertRowid as number;
 };
 
 type GetOrCreateSongId = {
   songName: string;
-  artistId: number | bigint;
+  artistId: number;
 };
 
 const getOrCreateSongId = ({ songName, artistId }: GetOrCreateSongId) => {
-  const row = db
-    .prepare('select * from songs where title = (?) and artist_id = (?)')
-    .get(songName, artistId);
+  const data = drizzledb
+    .select()
+    .from(songsDrizzleSchema)
+    .where(
+      and(
+        eq(songsDrizzleSchema.title, songName),
+        eq(songsDrizzleSchema.artistId, artistId)
+      )
+    )
+    .get();
 
-  const parsed = songRow.safeParse(row);
-
-  if (parsed.success) {
-    return parsed.data.id;
+  if (data) {
+    return data.id;
   }
 
-  const createdRow = db
-    .prepare('insert into songs (title, artist_id) values (?, ?)')
-    .run(songName, artistId);
+  const createdRow = drizzledb
+    .insert(songsDrizzleSchema)
+    .values({ title: songName, artistId })
+    .run();
 
-  return createdRow.lastInsertRowid;
+  return createdRow.lastInsertRowid as number;
 };
 
 const getOrCreateStationId = (stationSlug: string) => {
-  const row = db
-    .prepare('select * from stations where slug = (?)')
-    .get(stationSlug);
+  const data = drizzledb
+    .select()
+    .from(stationsDrizzleSchema)
+    .where(eq(stationsDrizzleSchema.slug, stationSlug))
+    .get();
 
-  const parsed = stationRow.safeParse(row);
-
-  if (parsed.success) {
-    return parsed.data.id;
+  if (data) {
+    return data.id;
   }
 
-  const createdRow = db
-    .prepare('insert into stations (slug) values (?)')
-    .run(stationSlug);
+  const createdRow = drizzledb
+    .insert(stationsDrizzleSchema)
+    .values({
+      slug: stationSlug,
+    })
+    .run();
 
-  return createdRow.lastInsertRowid;
+  return createdRow.lastInsertRowid as number;
 };
 
 export const setupDatabase = () => {
@@ -93,55 +135,49 @@ export const setupDatabase = () => {
 };
 
 export const getMostRecentPlay = (stationSlug: string) => {
-  const playSchema = z.object({
-    id: z.number(),
-    title: z.string(),
-    artist: z.string(),
-    station_slug: z.string(),
-  });
-
-  const row = db
-    .prepare(
-      `
-      select
-        plays.id,
-        songs.title,
-        artists.name as artist,
-        stations.slug as station_slug
-      from plays
-      join songs on songs.id = plays.song_id
-      join artists on artists.id = songs.artist_id
-      join stations on stations.id = plays.station_id
-      where stations.slug = (?)
-      order by plays.id desc
-      limit 1
-    `
+  const data = drizzledb
+    .select({
+      artist: artistsDrizzleSchema.name,
+      title: songsDrizzleSchema.title,
+    })
+    .from(playsDrizzleSchema)
+    .fullJoin(
+      songsDrizzleSchema,
+      eq(playsDrizzleSchema.songId, songsDrizzleSchema.id)
     )
-    .get(stationSlug);
+    .fullJoin(
+      artistsDrizzleSchema,
+      eq(songsDrizzleSchema.artistId, artistsDrizzleSchema.id)
+    )
+    .fullJoin(
+      stationsDrizzleSchema,
+      eq(playsDrizzleSchema.stationId, stationsDrizzleSchema.id)
+    )
+    .where(eq(stationsDrizzleSchema.slug, stationSlug))
+    .orderBy(desc(playsDrizzleSchema.id))
+    .limit(1)
+    .get();
 
-  const parsed = playSchema.safeParse(row);
-
-  if (parsed.success) {
-    return parsed.data;
+  if (data) {
+    return data;
   }
 
   return null;
 };
 
 type InsertRawData = {
-  playId: bigint | number;
+  playId: number;
   rawData: unknown;
 };
 
 export const insertRawData = ({ playId, rawData }: InsertRawData) => {
-  // Convert JSON object to string, and then to a Buffer
-  const rawDataBuffer = Buffer.from(JSON.stringify(rawData));
-
-  // Use a prepared statement to insert the data
-  const stmt = db.prepare(
-    `INSERT INTO raw_play_data (play_id, raw_data) VALUES (?, ?)`
-  );
-  const info = stmt.run(playId, rawDataBuffer);
+  const info = drizzledb
+    .insert(rawPlayDataDrizzleSchema)
+    .values({
+      playId,
+      rawData: JSON.stringify(rawData),
+    })
+    .run();
 
   return info;
 };
@@ -161,9 +197,13 @@ export const insertPlay = ({
   const songId = getOrCreateSongId({ songName, artistId });
   const stationId = getOrCreateStationId(stationSlug);
 
-  const createdRow = db
-    .prepare('insert into plays (song_id, station_id) values (?, ?)')
-    .run(songId, stationId);
+  const createdRow = drizzledb
+    .insert(playsDrizzleSchema)
+    .values({
+      songId,
+      stationId,
+    })
+    .run();
 
-  return createdRow.lastInsertRowid;
+  return createdRow.lastInsertRowid as number;
 };
