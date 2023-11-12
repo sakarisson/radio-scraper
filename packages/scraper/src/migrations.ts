@@ -151,5 +151,3 @@ function migrateWhitespaceEntries() {
     db.exec('ROLLBACK;');
   }
 }
-
-migrateWhitespaceEntries();
