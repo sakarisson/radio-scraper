@@ -82,13 +82,14 @@ export const setupDatabase = () => {
       id integer primary key,
       song_id integer not null references songs(id),
       station_id integer not null references stations(id),
-      time_played timestamp default (datetime('now'))
+      time_played timestamp default (datetime('now')),
+      is_deleted boolean default false
     );
     create table if not exists raw_play_data (
       id integer primary key,
       play_id integer not null references plays(id),
       raw_data blob not null
-    );
+    );  
   `);
 };
 

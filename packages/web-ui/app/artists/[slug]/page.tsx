@@ -18,6 +18,7 @@ export default function Artist({ params }: { params: { slug: string } }) {
       JOIN plays AS p ON s.id = p.song_id
       JOIN stations AS st ON p.station_id = st.id
       WHERE a.name COLLATE NOCASE = (?)
+      AND p.is_deleted = false
       ORDER BY p.time_played DESC;
   `
     )
