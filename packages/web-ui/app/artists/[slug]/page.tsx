@@ -55,7 +55,7 @@ export default function Artist({ params }: { params: { slug: string } }) {
       <div>Title</div>
       <div>Time Played</div>
       <div>Station</div>
-      {parsed.data.map(({ artist, title, time_played, station, id }) => (
+      {parsed.data.map(({ title, time_played, station, id }) => (
         <Fragment key={id}>
           <div>{title}</div>
           <div>{format(new Date(time_played), "PP p")}</div>
