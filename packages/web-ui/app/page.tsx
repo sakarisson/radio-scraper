@@ -1,3 +1,9 @@
+import { heading } from "@/styles/typography.css";
+
 export default function Home() {
-  return <main>Radio scraper.</main>;
+  return (
+    <div>
+      <h1 className={heading}>Radio scraper.</h1>
+    </div>
+  );
 }

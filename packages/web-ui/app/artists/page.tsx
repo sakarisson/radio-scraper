@@ -1,6 +1,7 @@
 import { z } from "zod";
 import Link from "next/link";
 import { database } from "@/utils/database";
+import { body, link } from "@/styles/typography.css";
 
 const PAGE_SIZE = 30;
 
@@ -61,12 +62,10 @@ export default function Artist(props: Props) {
         gridTemplateColumns: "1fr",
       }}
     >
-      <div>Artist name</div>
+      <div className={body}>Artist name</div>
       {parsed.data.map(({ id, name }) => (
         <Link href={`artists/${name}`} key={id}>
-          <div>
-            {name}, {id}
-          </div>
+          <div className={[body, link].join(" ")}>{name}</div>
         </Link>
       ))}
     </div>
