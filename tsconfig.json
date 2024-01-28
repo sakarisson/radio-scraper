@@ -6,7 +6,8 @@
     "noEmit": true,
     "incremental": true,
     "isolatedModules": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "allowImportingTsExtensions": true
   },
   "exclude": ["node_modules"]
 }
