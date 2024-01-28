@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Fragment } from "react";
 import { database } from "@/utils/database";
 import format from "date-fns/format";
+import { body } from "@/styles/typography.css";
 
 export default function Artist({ params }: { params: { slug: string } }) {
   const data = database
@@ -52,14 +53,14 @@ export default function Artist({ params }: { params: { slug: string } }) {
         gridTemplateColumns: "1fr 1fr 1fr",
       }}
     >
-      <div>Title</div>
-      <div>Time Played</div>
-      <div>Station</div>
+      <div className={body}>Title</div>
+      <div className={body}>Time Played</div>
+      <div className={body}>Station</div>
       {parsed.data.map(({ title, time_played, station, id }) => (
         <Fragment key={id}>
-          <div>{title}</div>
-          <div>{format(new Date(time_played), "PP p")}</div>
-          <div>{station}</div>
+          <div className={body}>{title}</div>
+          <div className={body}>{format(new Date(time_played), "PP p")}</div>
+          <div className={body}>{station}</div>
         </Fragment>
       ))}
     </div>
