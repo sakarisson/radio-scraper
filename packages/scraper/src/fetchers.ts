@@ -63,18 +63,22 @@ export const fetchers: Array<{
 
       return new Promise((resolve, reject) => {
         evtSource.onmessage = (event) => {
-          const {
-            radiotext: { artist, title },
-          } = schema.parse(JSON.parse(event.data));
+          try {
+            const {
+              radiotext: { artist, title },
+            } = schema.parse(JSON.parse(event.data));
 
-          if (!artist || !title) {
-            reject(new Error('No artist or title'));
-          } else {
-            resolve({
-              artist,
-              title,
-              rawData: event.data,
-            });
+            if (!artist || !title) {
+              reject(new Error('No artist or title'));
+            } else {
+              resolve({
+                artist,
+                title,
+                rawData: event.data,
+              });
+            }
+          } catch (err) {
+            reject(err);
           }
 
           evtSource.close();

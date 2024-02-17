@@ -15,30 +15,38 @@ setupDatabase();
 const scrape = () =>
   Promise.allSettled(
     fetchers.map(async (fetcher) => {
-      const { slug, fetchData } = fetcher;
-      const { artist, title, rawData } = await fetchData().then(
-        processPlayingEvent
-      );
+      try {
+        const { slug, fetchData } = fetcher;
+        const { artist, title, rawData } = await fetchData().then(
+          processPlayingEvent
+        );
 
-      const mostRecentPlay = getMostRecentPlay(slug);
+        const mostRecentPlay = getMostRecentPlay(slug);
 
-      if (
-        mostRecentPlay &&
-        mostRecentPlay.artist === artist &&
-        mostRecentPlay.title === title
-      ) {
-        return;
+        if (
+          mostRecentPlay &&
+          mostRecentPlay.artist === artist &&
+          mostRecentPlay.title === title
+        ) {
+          return;
+        }
+
+        const currentTimeFormatted = new Date().toISOString();
+
+        console.log(
+          `New play on ${slug}: ${artist} - ${title} (${currentTimeFormatted})`
+        );
+
+        const playId = insertPlay({
+          artistName: artist,
+          songName: title,
+          stationSlug: slug,
+        });
+
+        insertRawData({ playId, rawData });
+      } catch (error) {
+        console.error(`Error fetching data for station ${fetcher.slug}`, error);
       }
-
-      console.log(`New play on ${slug}: ${artist} - ${title}`);
-
-      const playId = insertPlay({
-        artistName: artist,
-        songName: title,
-        stationSlug: slug,
-      });
-
-      insertRawData({ playId, rawData });
     })
   );
 
