@@ -4,8 +4,9 @@ import { PlayingEvent, StationSlug } from './types';
 
 const ras2Url = process.env.STATION_URL_RAS_2;
 const kvfUrl = process.env.STATION_URL_KVF;
+const kvf2Url = process.env.STATION_URL_KVF2;
 
-if (!ras2Url || !kvfUrl) {
+if (!ras2Url || !kvfUrl || !kvf2Url) {
   throw new Error('Missing environment variables');
 }
 
@@ -66,6 +67,52 @@ export const fetchers: Array<{
           try {
             const {
               radiotext: { artist, title },
+            } = schema.parse(JSON.parse(event.data));
+
+            if (!artist || !title) {
+              reject(new Error('No artist or title'));
+            } else {
+              resolve({
+                artist,
+                title,
+                rawData: event.data,
+              });
+            }
+          } catch (err) {
+            reject(err);
+          }
+
+          evtSource.close();
+        };
+        evtSource.onerror = (err) => {
+          reject(err);
+
+          evtSource.close();
+        };
+      });
+    },
+  },
+  {
+    slug: 'kvf2',
+    fetchData: async () => {
+      const evtSource = new EventSource(kvf2Url, {
+        headers: {
+          Accept: 'text/event-stream',
+        },
+      });
+
+      const schema = z.object({
+        radiotext2: z.object({
+          artist: z.string().optional(),
+          title: z.string().optional(),
+        }),
+      });
+
+      return new Promise((resolve, reject) => {
+        evtSource.onmessage = (event) => {
+          try {
+            const {
+              radiotext2: { artist, title },
             } = schema.parse(JSON.parse(event.data));
 
             if (!artist || !title) {

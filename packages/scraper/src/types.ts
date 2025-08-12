@@ -4,4 +4,4 @@ export type PlayingEvent = {
   rawData: unknown;
 };
 
-export type StationSlug = 'ras2' | 'kvf';
+export type StationSlug = 'ras2' | 'kvf' | 'kvf2';
