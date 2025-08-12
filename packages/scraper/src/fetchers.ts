@@ -53,7 +53,11 @@ export const fetchers: Array<{
   {
     slug: 'kvf',
     fetchData: async () => {
-      const evtSource = new EventSource(kvfUrl);
+      const evtSource = new EventSource(kvfUrl, {
+        headers: {
+          Accept: 'text/event-stream',
+        },
+      });
 
       const schema = z.object({
         radiotext: z.object({
