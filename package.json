@@ -6,9 +6,10 @@
   "scripts": {
     "start:scraper": "cd packages/scraper && ts-node src/scraper.ts",
     "start:web": "cd packages/web-ui && next dev",
-    "build:web": "cd packages/web-ui && next build",
-    "serve:web": "cd packages/web-ui && next start",
-    "build": "yarn build:web && yarn workspace scraper run build",
+    "build:web": "pnpm --filter web-ui run build",
+    "build:scraper": "pnpm --filter scraper run build",
+    "serve:web": "pnpm --filter web-ui run start",
+    "build": "pnpm run build:web && pnpm run build:scraper",
     "start": "pm2-runtime ecosystem.config.cjs",
     "backup:sqlite": "sqlite3 $DB_PATH '.backup /data/backups/app-$(date +%F-%H%M).db'"
   },

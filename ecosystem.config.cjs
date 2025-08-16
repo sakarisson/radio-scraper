@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "web",
       cwd: ".",
-      script: "yarn",
+      script: "pnpm",
       args: "serve:web",
       exec_mode: "fork",
       instances: 1,
