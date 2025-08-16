@@ -71,3 +71,5 @@ export default function Artist(props: Props) {
     </div>
   );
 }
+
+export const dynamic = "force-dynamic";
