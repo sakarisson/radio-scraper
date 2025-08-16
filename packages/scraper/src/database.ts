@@ -2,7 +2,10 @@ import Database from 'better-sqlite3';
 import { z } from 'zod';
 import { artistRow, songRow, stationRow } from './schema';
 
-const db = new Database('database.sqlite');
+const db = new Database(process.env.DB_PATH ?? 'database.sqlite');
+
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 
 const getOrCreateArtistId = (artistName: string) => {
   const row = db

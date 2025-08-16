@@ -7,6 +7,12 @@
     "start:scraper": "cd packages/scraper && ts-node src/scraper.ts",
     "start:web": "cd packages/web-ui && next dev",
     "build:web": "cd packages/web-ui && next build",
-    "serve:web": "cd packages/web-ui && next start"
+    "serve:web": "cd packages/web-ui && next start",
+    "build": "yarn build:web && yarn workspace scraper run build",
+    "start": "pm2-runtime ecosystem.config.cjs",
+    "backup:sqlite": "sqlite3 $DB_PATH '.backup /data/backups/app-$(date +%F-%H%M).db'"
+  },
+  "dependencies": {
+    "pm2": "^5.4.0"
   }
 }

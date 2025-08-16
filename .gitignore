@@ -132,5 +132,7 @@ dist
 # vercel
 .vercel
 
-database.sqlite
+database.sqlite*
 .DS_Store
+build output
+packages/scraper/dist

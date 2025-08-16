@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 
-const db = new Database('database.sqlite', { verbose: console.log });
+const db = new Database(process.env.DB_PATH ?? 'database.sqlite', {
+  verbose: console.log,
+});
 
 const softDeleteBadTimePlayed = () => {
   // Start a transaction
