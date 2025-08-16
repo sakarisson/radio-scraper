@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { Fragment } from "react";
-import { database } from "@/utils/database";
+import { getDb } from "@/utils/database";
 import format from "date-fns/format";
 import { body } from "@/styles/typography.css";
 
 export default function Artist({ params }: { params: { slug: string } }) {
-  const data = database
+  const data = getDb()
     .prepare(
       `
       SELECT 

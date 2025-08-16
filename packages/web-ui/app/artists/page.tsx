@@ -1,6 +1,6 @@
 import { z } from "zod";
 import Link from "next/link";
-import { database } from "@/utils/database";
+import { getDb } from "@/utils/database";
 import { body, link } from "@/styles/typography.css";
 
 const PAGE_SIZE = 30;
@@ -26,7 +26,7 @@ export default function Artist(props: Props) {
     return (parsedSearchParams.data?.page ?? 0) * PAGE_SIZE;
   };
 
-  const data = database
+  const data = getDb()
     .prepare(
       `
     select id, name from artists
