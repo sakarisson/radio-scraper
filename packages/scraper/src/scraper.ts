@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 import {
   getMostRecentPlay,
@@ -21,7 +20,7 @@ const scrape = () =>
           processPlayingEvent
         );
 
-        const mostRecentPlay = getMostRecentPlay(slug);
+        const mostRecentPlay = await getMostRecentPlay(slug);
 
         if (
           mostRecentPlay &&
@@ -37,13 +36,13 @@ const scrape = () =>
           `New play on ${slug}: ${artist} - ${title} (${currentTimeFormatted})`
         );
 
-        const playId = insertPlay({
+        const playId = await insertPlay({
           artistName: artist,
           songName: title,
           stationSlug: slug,
         });
 
-        insertRawData({ playId, rawData });
+        await insertRawData({ playId, rawData });
       } catch (error) {
         // console.error(
         //   `Error fetching data for station ${fetcher.slug}`,
