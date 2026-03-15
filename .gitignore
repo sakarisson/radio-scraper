@@ -134,5 +134,7 @@ dist
 
 database.sqlite*
 .DS_Store
+.mcp.json
+.claude/
 build output
 packages/scraper/dist
