@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isLikelyAdByText } from './isLikelyAd';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -142,14 +143,49 @@ export const insertPlay = async ({
   const songId = await getOrCreateSongId({ songName, artistId });
   const stationId = await getOrCreateStationId(stationSlug);
 
+  const likelyAd = isLikelyAdByText(artistName, songName);
+
   const { data, error } = await supabase
     .from('plays')
-    .insert({ song_id: songId, station_id: stationId })
-    .select('id')
+    .insert({ song_id: songId, station_id: stationId, is_likely_ad: likelyAd })
+    .select('id, time_played')
     .single();
 
   if (error || !data) throw error ?? new Error('Failed to insert play');
+
+  // Retroactively flag the previous play on this station if it was ≤ 60s ago (RAS2 only)
+  if (stationSlug === 'ras2') {
+    await flagPreviousPlayIfShort({ stationId, currentTimePlayed: data.time_played, currentPlayId: data.id });
+  }
+
   return data.id;
+};
+
+const flagPreviousPlayIfShort = async ({
+  stationId,
+  currentTimePlayed,
+  currentPlayId,
+}: {
+  stationId: number;
+  currentTimePlayed: string;
+  currentPlayId: number;
+}): Promise<void> => {
+  const { data: prev } = await supabase
+    .from('plays')
+    .select('id, time_played')
+    .eq('station_id', stationId)
+    .neq('id', currentPlayId)
+    .order('time_played', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!prev) return;
+
+  const gapSeconds = (new Date(currentTimePlayed).getTime() - new Date(prev.time_played).getTime()) / 1000;
+
+  if (gapSeconds <= 60) {
+    await supabase.from('plays').update({ is_likely_ad: true }).eq('id', prev.id);
+  }
 };
 
 // No-op: schema is managed in Supabase dashboard via supabase/schema.sql

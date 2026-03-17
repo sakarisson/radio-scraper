@@ -45,27 +45,45 @@ async function migrate() {
   const artists = sqlite.prepare('select * from artists').all();
   const songs = sqlite.prepare('select * from songs').all();
   const stations = sqlite.prepare('select * from stations').all();
-  const plays = sqlite.prepare('select * from plays').all();
+  const allPlays = sqlite.prepare('select * from plays').all() as Array<{
+    id: number;
+    song_id: number;
+    station_id: number;
+    time_played: string;
+    is_deleted: number;
+  }>;
   const rawPlays = sqlite.prepare('select * from raw_play_data').all() as Array<{
     id: number;
     play_id: number;
     raw_data: Buffer;
   }>;
 
-  console.log(`Found: ${artists.length} artists, ${songs.length} songs, ${stations.length} stations, ${plays.length} plays, ${rawPlays.length} raw_play_data rows`);
+  const validPlays = allPlays.filter((row) => {
+    const valid = !isNaN(Date.parse(row.time_played));
+    return valid;
+  });
+  const skippedPlays = allPlays.length - validPlays.length;
+  const skippedPlayIds = new Set(allPlays.filter(r => isNaN(Date.parse(r.time_played))).map(r => r.id));
+
+  console.log(`Found: ${artists.length} artists, ${songs.length} songs, ${stations.length} stations, ${allPlays.length} plays, ${rawPlays.length} raw_play_data rows`);
+  if (skippedPlays > 0) {
+    console.log(`  NOTE: skipping ${skippedPlays} play(s) with invalid time_played`);
+  }
   console.log('Migrating...');
 
   await insertInBatches('artists', artists);
   await insertInBatches('songs', songs);
   await insertInBatches('stations', stations);
-  await insertInBatches('plays', plays);
+  await insertInBatches('plays', validPlays);
 
-  const rawPlaysFormatted = rawPlays.map((row) => ({
-    id: row.id,
-    play_id: row.play_id,
-    raw_data: JSON.parse(row.raw_data.toString()),
-  }));
-  await insertInBatches('raw_play_data', rawPlaysFormatted);
+  const validRawPlays = rawPlays
+    .filter((row) => !skippedPlayIds.has(row.play_id))
+    .map((row) => ({
+      id: row.id,
+      play_id: row.play_id,
+      raw_data: JSON.parse(row.raw_data.toString()),
+    }));
+  await insertInBatches('raw_play_data', validRawPlays);
 
   // Reset sequences so new inserts get correct IDs
   console.log('Resetting sequences...');
