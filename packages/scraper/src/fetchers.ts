@@ -7,7 +7,7 @@ const kvfUrl = process.env.STATION_URL_KVF;
 const kvf2Url = process.env.STATION_URL_KVF2;
 
 if (!ras2Url || !kvfUrl || !kvf2Url) {
-  throw new Error('Missing environment variables');
+  throw new Error('Missing environment variables: STATION_URL_RAS_2, STATION_URL_KVF, STATION_URL_KVF2');
 }
 
 export const fetchers: Array<{

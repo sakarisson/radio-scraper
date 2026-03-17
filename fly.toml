@@ -1,0 +1,11 @@
+app = "faroese-radio-scraper"
+primary_region = "ams"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

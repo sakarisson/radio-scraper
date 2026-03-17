@@ -1,153 +1,131 @@
-import Database from 'better-sqlite3';
-import { z } from 'zod';
-import { artistRow, songRow, stationRow } from './schema';
+import { createClient } from '@supabase/supabase-js';
+import { isLikelyAdByText } from './isLikelyAd';
 
-const db = new Database(process.env.DB_PATH ?? 'database.sqlite');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
 
-const getOrCreateArtistId = (artistName: string) => {
-  const row = db
-    .prepare('select * from artists where name = (?)')
-    .get(artistName);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const parsed = artistRow.safeParse(row);
+const getOrCreateArtistId = async (artistName: string): Promise<number> => {
+  const { data: existing } = await supabase
+    .from('artists')
+    .select('id')
+    .eq('name', artistName)
+    .single();
 
-  if (parsed.success) {
-    return parsed.data.id;
-  }
+  if (existing) return existing.id;
 
-  const definitelyArtist = db
-    .prepare('insert into artists (name) values (?)')
-    .run(artistName);
+  const { data: created, error } = await supabase
+    .from('artists')
+    .insert({ name: artistName })
+    .select('id')
+    .single();
 
-  return definitelyArtist.lastInsertRowid;
+  if (error || !created) throw error ?? new Error('Failed to create artist');
+  return created.id;
 };
 
-type GetOrCreateSongId = {
+const getOrCreateSongId = async ({
+  songName,
+  artistId,
+}: {
   songName: string;
-  artistId: number | bigint;
+  artistId: number;
+}): Promise<number> => {
+  const { data: existing } = await supabase
+    .from('songs')
+    .select('id')
+    .eq('title', songName)
+    .eq('artist_id', artistId)
+    .single();
+
+  if (existing) return existing.id;
+
+  const { data: created, error } = await supabase
+    .from('songs')
+    .insert({ title: songName, artist_id: artistId })
+    .select('id')
+    .single();
+
+  if (error || !created) throw error ?? new Error('Failed to create song');
+  return created.id;
 };
 
-const getOrCreateSongId = ({ songName, artistId }: GetOrCreateSongId) => {
-  const row = db
-    .prepare('select * from songs where title = (?) and artist_id = (?)')
-    .get(songName, artistId);
+const getOrCreateStationId = async (stationSlug: string): Promise<number> => {
+  const { data: existing } = await supabase
+    .from('stations')
+    .select('id')
+    .eq('slug', stationSlug)
+    .single();
 
-  const parsed = songRow.safeParse(row);
+  if (existing) return existing.id;
 
-  if (parsed.success) {
-    return parsed.data.id;
-  }
+  const { data: created, error } = await supabase
+    .from('stations')
+    .insert({ slug: stationSlug })
+    .select('id')
+    .single();
 
-  const createdRow = db
-    .prepare('insert into songs (title, artist_id) values (?, ?)')
-    .run(songName, artistId);
-
-  return createdRow.lastInsertRowid;
+  if (error || !created) throw error ?? new Error('Failed to create station');
+  return created.id;
 };
 
-const getOrCreateStationId = (stationSlug: string) => {
-  const row = db
-    .prepare('select * from stations where slug = (?)')
-    .get(stationSlug);
+export const getMostRecentPlay = async (stationSlug: string) => {
+  const { data: station } = await supabase
+    .from('stations')
+    .select('id')
+    .eq('slug', stationSlug)
+    .single();
 
-  const parsed = stationRow.safeParse(row);
+  if (!station) return null;
 
-  if (parsed.success) {
-    return parsed.data.id;
-  }
+  const { data: play } = await supabase
+    .from('plays')
+    .select('id, song_id')
+    .eq('station_id', station.id)
+    .order('id', { ascending: false })
+    .limit(1)
+    .single();
 
-  const createdRow = db
-    .prepare('insert into stations (slug) values (?)')
-    .run(stationSlug);
+  if (!play) return null;
 
-  return createdRow.lastInsertRowid;
-};
+  const { data: song } = await supabase
+    .from('songs')
+    .select('title, artist_id')
+    .eq('id', play.song_id)
+    .single();
 
-export const setupDatabase = () => {
-  db.exec(`
-    create table if not exists artists (
-      id integer primary key,
-      name text not null
-    );
-    create table if not exists songs (
-      id integer primary key,
-      title text not null,
-      artist_id integer not null references artists(id)
-    );
-    create table if not exists stations (
-      id integer primary key,
-      slug text not null
-    );
-    create table if not exists plays (
-      id integer primary key,
-      song_id integer not null references songs(id),
-      station_id integer not null references stations(id),
-      time_played timestamp default (datetime('now')),
-      is_deleted boolean default false
-    );
-    create table if not exists raw_play_data (
-      id integer primary key,
-      play_id integer not null references plays(id),
-      raw_data blob not null
-    );  
-  `);
-};
+  if (!song) return null;
 
-export const getMostRecentPlay = (stationSlug: string) => {
-  const playSchema = z.object({
-    id: z.number(),
-    title: z.string(),
-    artist: z.string(),
-    station_slug: z.string(),
-  });
+  const { data: artist } = await supabase
+    .from('artists')
+    .select('name')
+    .eq('id', song.artist_id)
+    .single();
 
-  const row = db
-    .prepare(
-      `
-      select
-        plays.id,
-        songs.title,
-        artists.name as artist,
-        stations.slug as station_slug
-      from plays
-      join songs on songs.id = plays.song_id
-      join artists on artists.id = songs.artist_id
-      join stations on stations.id = plays.station_id
-      where stations.slug = (?)
-      order by plays.id desc
-      limit 1
-    `
-    )
-    .get(stationSlug);
-
-  const parsed = playSchema.safeParse(row);
-
-  if (parsed.success) {
-    return parsed.data;
-  }
-
-  return null;
+  return {
+    id: play.id,
+    title: song.title,
+    artist: artist?.name ?? '',
+    station_slug: stationSlug,
+  };
 };
 
 type InsertRawData = {
-  playId: bigint | number;
+  playId: number;
   rawData: unknown;
 };
 
-export const insertRawData = ({ playId, rawData }: InsertRawData) => {
-  // Convert JSON object to string, and then to a Buffer
-  const rawDataBuffer = Buffer.from(JSON.stringify(rawData));
+export const insertRawData = async ({ playId, rawData }: InsertRawData) => {
+  const { error } = await supabase
+    .from('raw_play_data')
+    .insert({ play_id: playId, raw_data: rawData });
 
-  // Use a prepared statement to insert the data
-  const stmt = db.prepare(
-    `INSERT INTO raw_play_data (play_id, raw_data) VALUES (?, ?)`
-  );
-  const info = stmt.run(playId, rawDataBuffer);
-
-  return info;
+  if (error) throw error;
 };
 
 type CreatePlay = {
@@ -156,18 +134,59 @@ type CreatePlay = {
   stationSlug: string;
 };
 
-export const insertPlay = ({
+export const insertPlay = async ({
   songName,
   artistName,
   stationSlug,
-}: CreatePlay) => {
-  const artistId = getOrCreateArtistId(artistName);
-  const songId = getOrCreateSongId({ songName, artistId });
-  const stationId = getOrCreateStationId(stationSlug);
+}: CreatePlay): Promise<number> => {
+  const artistId = await getOrCreateArtistId(artistName);
+  const songId = await getOrCreateSongId({ songName, artistId });
+  const stationId = await getOrCreateStationId(stationSlug);
 
-  const createdRow = db
-    .prepare('insert into plays (song_id, station_id) values (?, ?)')
-    .run(songId, stationId);
+  const likelyAd = isLikelyAdByText(artistName, songName);
 
-  return createdRow.lastInsertRowid;
+  const { data, error } = await supabase
+    .from('plays')
+    .insert({ song_id: songId, station_id: stationId, is_likely_ad: likelyAd })
+    .select('id, time_played')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Failed to insert play');
+
+  // Retroactively flag the previous play on this station if it was ≤ 60s ago (RAS2 only)
+  if (stationSlug === 'ras2') {
+    await flagPreviousPlayIfShort({ stationId, currentTimePlayed: data.time_played, currentPlayId: data.id });
+  }
+
+  return data.id;
 };
+
+const flagPreviousPlayIfShort = async ({
+  stationId,
+  currentTimePlayed,
+  currentPlayId,
+}: {
+  stationId: number;
+  currentTimePlayed: string;
+  currentPlayId: number;
+}): Promise<void> => {
+  const { data: prev } = await supabase
+    .from('plays')
+    .select('id, time_played')
+    .eq('station_id', stationId)
+    .neq('id', currentPlayId)
+    .order('time_played', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!prev) return;
+
+  const gapSeconds = (new Date(currentTimePlayed).getTime() - new Date(prev.time_played).getTime()) / 1000;
+
+  if (gapSeconds <= 60) {
+    await supabase.from('plays').update({ is_likely_ad: true }).eq('id', prev.id);
+  }
+};
+
+// No-op: schema is managed in Supabase dashboard via supabase/schema.sql
+export const setupDatabase = () => {};
