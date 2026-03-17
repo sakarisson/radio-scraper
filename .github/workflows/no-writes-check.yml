@@ -1,0 +1,37 @@
+name: No-writes check
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query last play
+        id: query
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          LAST_PLAY=$(curl -sf \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/plays?select=time_played&is_likely_ad=eq.false&order=time_played.desc&limit=1" \
+            | jq -r '.[0].time_played')
+          echo "Last play: $LAST_PLAY"
+          echo "last_play=$LAST_PLAY" >> $GITHUB_OUTPUT
+
+      - name: Check gap
+        run: |
+          LAST_TS=$(date -d "${{ steps.query.outputs.last_play }}" +%s)
+          NOW=$(date +%s)
+          GAP=$(( NOW - LAST_TS ))
+          THRESHOLD=$(( 6 * 3600 ))
+          GAP_HOURS=$(echo "scale=1; $GAP / 3600" | bc)
+          echo "Gap: ${GAP_HOURS}h (threshold: 6h)"
+          if [ "$GAP" -gt "$THRESHOLD" ]; then
+            echo "ALERT: No plays written in ${GAP_HOURS}h. Last play: ${{ steps.query.outputs.last_play }}"
+            exit 1
+          fi

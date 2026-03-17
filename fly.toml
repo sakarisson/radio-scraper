@@ -5,6 +5,22 @@ primary_region = "ams"
 
 [env]
   NODE_ENV = "production"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = false
+  auto_stop_machines = false
+  auto_start_machines = false
+
+  [[http_service.checks]]
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+
+[restart]
+  policy = "always"
+  max_retries = 10
 
 [[vm]]
   size = "shared-cpu-1x"
