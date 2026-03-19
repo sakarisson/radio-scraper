@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { isLikelyAdByText } from './isLikelyAd';
+import { isLikelyNotMusic } from './isLikelyAd';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -143,17 +143,17 @@ export const insertPlay = async ({
   const songId = await getOrCreateSongId({ songName, artistId });
   const stationId = await getOrCreateStationId(stationSlug);
 
-  const likelyAd = isLikelyAdByText(artistName, songName);
+  const likelyNotMusic = isLikelyNotMusic(artistName, songName);
 
   const { data, error } = await supabase
     .from('plays')
-    .insert({ song_id: songId, station_id: stationId, is_likely_ad: likelyAd })
+    .insert({ song_id: songId, station_id: stationId, is_likely_not_music: likelyNotMusic })
     .select('id, time_played')
     .single();
 
   if (error || !data) throw error ?? new Error('Failed to insert play');
 
-  // Retroactively flag the previous play on this station if it was ≤ 60s ago (RAS2 only)
+  // Retroactively flag plays on this station by duration heuristic (RAS2 only)
   if (stationSlug === 'ras2') {
     await flagPreviousPlayIfShort({ stationId, currentTimePlayed: data.time_played, currentPlayId: data.id });
   }
@@ -185,7 +185,10 @@ const flagPreviousPlayIfShort = async ({
 
   if (gapSeconds <= 90) {
     // Flag both the previous play and the current play
-    await supabase.from('plays').update({ is_likely_ad: true }).in('id', [prev.id, currentPlayId]);
+    await supabase.from('plays').update({ is_likely_not_music: true }).in('id', [prev.id, currentPlayId]);
+  } else if (gapSeconds >= 900) {
+    // Previous play lasted ≥15 min — likely a programme, not a song
+    await supabase.from('plays').update({ is_likely_not_music: true }).eq('id', prev.id);
   }
 };
 

@@ -21,7 +21,7 @@ create table if not exists plays (
   station_id bigint not null references stations(id),
   time_played timestamptz default now(),
   is_deleted boolean default false,
-  is_likely_ad boolean default false
+  is_likely_not_music boolean default false
 );
 
 create table if not exists raw_play_data (

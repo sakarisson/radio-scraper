@@ -18,7 +18,7 @@ jobs:
           LAST_PLAY=$(curl -sf \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/plays?select=time_played&is_likely_ad=eq.false&order=time_played.desc&limit=1" \
+            "$SUPABASE_URL/rest/v1/plays?select=time_played&is_likely_not_music=eq.false&order=time_played.desc&limit=1" \
             | jq -r '.[0].time_played')
           echo "Last play: $LAST_PLAY"
           echo "last_play=$LAST_PLAY" >> $GITHUB_OUTPUT
