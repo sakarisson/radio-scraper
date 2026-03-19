@@ -184,8 +184,8 @@ const flagPreviousPlayIfShort = async ({
   const gapSeconds = (new Date(currentTimePlayed).getTime() - new Date(prev.time_played).getTime()) / 1000;
 
   if (gapSeconds <= 90) {
-    // Flag both the previous play and the current play
-    await supabase.from('plays').update({ is_likely_not_music: true }).in('id', [prev.id, currentPlayId]);
+    // Previous play lasted ≤90s — likely not a song
+    await supabase.from('plays').update({ is_likely_not_music: true }).eq('id', prev.id);
   } else if (gapSeconds >= 900) {
     // Previous play lasted ≥15 min — likely a programme, not a song
     await supabase.from('plays').update({ is_likely_not_music: true }).eq('id', prev.id);
