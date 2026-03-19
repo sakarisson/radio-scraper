@@ -183,7 +183,7 @@ const flagPreviousPlayIfShort = async ({
 
   const gapSeconds = (new Date(currentTimePlayed).getTime() - new Date(prev.time_played).getTime()) / 1000;
 
-  if (gapSeconds <= 60) {
+  if (gapSeconds <= 90) {
     await supabase.from('plays').update({ is_likely_ad: true }).eq('id', prev.id);
   }
 };
