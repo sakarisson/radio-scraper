@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - packages/web-ui/**
+      - Dockerfile.web
+      - fly.web.toml
 
 jobs:
   deploy:
