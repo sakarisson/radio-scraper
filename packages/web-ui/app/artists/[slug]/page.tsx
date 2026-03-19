@@ -1,29 +1,15 @@
 import { z } from "zod";
 import { Fragment } from "react";
-import { getDb } from "@/utils/database";
+import { getArtistPlays } from "@/utils/database";
 import format from "date-fns/format";
 import { body } from "@/styles/typography.css";
 
-export default function Artist({ params }: { params: { slug: string } }) {
-  const data = getDb()
-    .prepare(
-      `
-      SELECT 
-        a.name AS artist, 
-        s.title AS title,
-        p.time_played AS time_played,
-        st.slug AS station,
-        p.id as id
-      FROM artists AS a
-      JOIN songs AS s ON a.id = s.artist_id
-      JOIN plays AS p ON s.id = p.song_id
-      JOIN stations AS st ON p.station_id = st.id
-      WHERE a.name COLLATE NOCASE = (?)
-      AND p.is_deleted = false
-      ORDER BY p.time_played DESC;
-  `
-    )
-    .all(decodeURIComponent(params.slug));
+export default async function Artist({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const data = await getArtistPlays(decodeURIComponent(params.slug));
 
   const schema = z.array(
     z.object({

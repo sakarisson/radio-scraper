@@ -1,13 +1,13 @@
-name: Deploy to Fly.io
+name: Deploy Web to Fly.io
 
 on:
   push:
     branches:
       - main
     paths:
-      - packages/scraper/**
-      - Dockerfile
-      - fly.toml
+      - packages/web-ui/**
+      - Dockerfile.web
+      - fly.web.toml
 
 jobs:
   deploy:
@@ -15,6 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - run: flyctl deploy -c fly.web.toml --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

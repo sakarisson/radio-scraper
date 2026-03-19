@@ -1,6 +1,6 @@
 import { z } from "zod";
 import Link from "next/link";
-import { getDb } from "@/utils/database";
+import { getArtists } from "@/utils/database";
 import { body, link } from "@/styles/typography.css";
 
 const PAGE_SIZE = 30;
@@ -9,7 +9,7 @@ type Props = {
   searchParams?: unknown;
 };
 
-export default function Artist(props: Props) {
+export default async function Artist(props: Props) {
   const paramsSchema = z
     .object({
       page: z.string().regex(/^\d+$/).transform(Number).optional(),
@@ -26,16 +26,7 @@ export default function Artist(props: Props) {
     return (parsedSearchParams.data?.page ?? 0) * PAGE_SIZE;
   };
 
-  const data = getDb()
-    .prepare(
-      `
-    select id, name from artists
-    order by name asc
-    limit 30
-    offset (?)
-  `
-    )
-    .all(getOffset());
+  const data = await getArtists(getOffset(), PAGE_SIZE);
 
   const schema = z.array(
     z.object({
