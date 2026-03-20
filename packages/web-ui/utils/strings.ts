@@ -35,6 +35,8 @@ export const strings = {
   topArtists: "Top Artists",
   topSongs: "Top Songs",
   noDataForMonth: "No plays recorded for this month.",
+  filterByStation: "Stations:",
+  allStationsLabel: "All",
   stationsTitle: "Stations",
   totalPlays: "total plays",
   mostRecent: "Most recent",

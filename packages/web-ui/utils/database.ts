@@ -221,17 +221,38 @@ export async function getArtistPlays(
   }));
 }
 
+export async function getAllStationSlugs() {
+  const { data, error } = await getSupabase()
+    .from("stations")
+    .select("slug")
+    .order("slug");
+
+  if (error) throw error;
+  return (data ?? []).map((s) => s.slug);
+}
+
+async function resolveStationIds(slugs: string[]): Promise<number[]> {
+  const { data, error } = await getSupabase()
+    .from("stations")
+    .select("id")
+    .in("slug", slugs);
+
+  if (error) throw error;
+  return (data ?? []).map((s) => s.id);
+}
+
 export async function getTopArtistsForMonth(
   year: number,
   month: number,
-  limit: number = 10
+  limit: number = 10,
+  stationSlugs?: string[]
 ) {
   const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
   const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
 
-  const { data, error } = await getSupabase()
+  let q = getSupabase()
     .from("plays")
     .select(
       `
@@ -244,6 +265,13 @@ export async function getTopArtistsForMonth(
     .lt("time_played", startOfNextMonth)
     .eq("is_deleted", false)
     .eq("is_likely_not_music", false);
+
+  if (stationSlugs && stationSlugs.length > 0) {
+    const ids = await resolveStationIds(stationSlugs);
+    q = q.in("station_id", ids);
+  }
+
+  const { data, error } = await q;
 
   if (error) throw error;
   if (!data || data.length === 0) return [];
@@ -263,14 +291,15 @@ export async function getTopArtistsForMonth(
 export async function getTopSongsForMonth(
   year: number,
   month: number,
-  limit: number = 10
+  limit: number = 10,
+  stationSlugs?: string[]
 ) {
   const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
   const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
 
-  const { data, error } = await getSupabase()
+  let q = getSupabase()
     .from("plays")
     .select(
       `
@@ -284,6 +313,13 @@ export async function getTopSongsForMonth(
     .lt("time_played", startOfNextMonth)
     .eq("is_deleted", false)
     .eq("is_likely_not_music", false);
+
+  if (stationSlugs && stationSlugs.length > 0) {
+    const ids = await resolveStationIds(stationSlugs);
+    q = q.in("station_id", ids);
+  }
+
+  const { data, error } = await q;
 
   if (error) throw error;
   if (!data || data.length === 0) return [];

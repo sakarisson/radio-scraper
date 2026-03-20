@@ -151,6 +151,52 @@ export const rankCount = style({
   flexShrink: 0,
 });
 
+export const stationFilter = style({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: vars.space["2"],
+  marginBottom: vars.space["6"],
+  flexWrap: "wrap",
+});
+
+export const filterLabel = style({
+  fontSize: vars.fontSize.sm,
+  fontFamily: vars.font.body,
+  color: vars.color.textSecondary,
+  marginRight: vars.space["1"],
+});
+
+export const filterChip = style({
+  display: "inline-block",
+  fontSize: vars.fontSize.xs,
+  fontFamily: vars.font.body,
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.03em",
+  padding: `${vars.space["1"]} ${vars.space["3"]}`,
+  borderRadius: vars.radius.sm,
+  border: `1px solid ${vars.color.border}`,
+  backgroundColor: vars.color.bgSurface,
+  color: vars.color.textSecondary,
+  textDecoration: "none",
+  transition: "all 150ms ease",
+  ":hover": {
+    borderColor: vars.color.textMuted,
+    backgroundColor: vars.color.bgHover,
+  },
+});
+
+export const filterChipActive = style({
+  backgroundColor: vars.color.bgDark,
+  color: vars.color.textOnDark,
+  borderColor: vars.color.bgDark,
+  ":hover": {
+    backgroundColor: vars.color.bgDark,
+    borderColor: vars.color.bgDark,
+  },
+});
+
 export const emptyState = style({
   textAlign: "center",
   padding: `${vars.space["12"]} 0`,
