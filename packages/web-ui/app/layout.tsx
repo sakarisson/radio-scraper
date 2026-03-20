@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-// import "./globals.css";
+import "./globals.css";
 import * as layout from "@/styles/layout.css";
-
-const inter = Inter({ subsets: ["latin"] });
+import { Header } from "./components/Header";
+import { strings } from "@/utils/strings";
 
 export const metadata: Metadata = {
-  title: "Radio Scraper",
-  description: "Faroese radio songs",
+  title: strings.siteName,
+  description: strings.siteDescription,
 };
 
 export default function RootLayout({
@@ -18,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={layout.root}>
+        <Header />
         <main className={layout.content}>{children}</main>
       </body>
     </html>
