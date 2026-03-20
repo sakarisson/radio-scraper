@@ -15,9 +15,9 @@ const badgeBase = style({
 });
 
 const stationColors: Record<string, { bg: string; color: string }> = {
-  kvf: { bg: "#e8f0fe", color: "#1a56db" },
-  ras2: { bg: "#fef3e2", color: "#b45309" },
-  lindin: { bg: "#e6f9ed", color: "#16803c" },
+  kvf: { bg: "#edf3f7", color: "#3a6580" },
+  ras2: { bg: "#f5f0ea", color: "#7a6548" },
+  lindin: { bg: "#edf5ef", color: "#4a7a5a" },
   default: { bg: vars.color.bgHover, color: vars.color.textSecondary },
 };
 

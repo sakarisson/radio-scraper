@@ -2,16 +2,18 @@ import { createGlobalTheme } from "@vanilla-extract/css";
 
 export const vars = createGlobalTheme(":root", {
   color: {
-    textPrimary: "#1a1a2e",
-    textSecondary: "#555770",
-    textMuted: "#8a8da0",
-    bgPage: "#f8f9fb",
+    textPrimary: "#1e293b",
+    textSecondary: "#64748b",
+    textMuted: "#94a3b8",
+    bgPage: "#f8fafc",
     bgSurface: "#ffffff",
-    bgHover: "#f0f1f5",
-    border: "#e2e4ea",
-    accent: "#4a6fa5",
-    accentHover: "#3d5d8a",
-    accentLight: "#eef2f8",
+    bgHover: "#f1f5f9",
+    border: "#e2e8f0",
+    accent: "#4a7c9b",
+    accentHover: "#3a6580",
+    accentLight: "#eef4f8",
+    bgDark: "#1a2332",
+    textOnDark: "#e2e8f0",
   },
   space: {
     "1": "4px",
@@ -24,7 +26,7 @@ export const vars = createGlobalTheme(":root", {
     "16": "64px",
   },
   font: {
-    body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    body: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     mono: "ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace",
   },
   fontSize: {

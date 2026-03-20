@@ -5,8 +5,8 @@ export const header = style({
   position: "sticky",
   top: 0,
   zIndex: 10,
-  backgroundColor: vars.color.bgSurface,
-  borderBottom: `1px solid ${vars.color.border}`,
+  backgroundColor: vars.color.bgDark,
+  borderTop: `3px solid ${vars.color.accent}`,
 });
 
 export const headerInner = style({
@@ -28,7 +28,7 @@ export const siteName = style({
   fontSize: vars.fontSize.lg,
   fontFamily: vars.font.body,
   fontWeight: 600,
-  color: vars.color.textPrimary,
+  color: vars.color.textOnDark,
   textDecoration: "none",
   ":hover": {
     color: vars.color.accent,
@@ -44,10 +44,10 @@ export const nav = style({
 export const navLink = style({
   fontSize: vars.fontSize.sm,
   fontFamily: vars.font.body,
-  color: vars.color.textSecondary,
+  color: vars.color.textMuted,
   textDecoration: "none",
   transition: "color 150ms ease",
   ":hover": {
-    color: vars.color.accent,
+    color: vars.color.textOnDark,
   },
 });

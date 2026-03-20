@@ -7,6 +7,7 @@ export const heading = style({
   fontWeight: 700,
   color: vars.color.textPrimary,
   lineHeight: 1.2,
+  letterSpacing: "-0.02em",
 });
 
 export const headingLg = style({
@@ -15,6 +16,7 @@ export const headingLg = style({
   fontWeight: 600,
   color: vars.color.textPrimary,
   lineHeight: 1.3,
+  letterSpacing: "-0.02em",
 });
 
 export const body = style({

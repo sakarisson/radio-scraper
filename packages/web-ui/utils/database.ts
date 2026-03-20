@@ -69,6 +69,56 @@ export async function getRecentPlays(limit: number) {
   }));
 }
 
+export async function getLatestPlayPerStation() {
+  const { data: stations, error: stationsError } = await getSupabase()
+    .from("stations")
+    .select("id, slug");
+
+  if (stationsError) throw stationsError;
+  if (!stations || stations.length === 0) return [];
+
+  const results = await Promise.all(
+    stations.map(async (station) => {
+      const { data, error } = await getSupabase()
+        .from("plays")
+        .select(
+          `
+          id,
+          time_played,
+          songs!inner (
+            title,
+            artists!inner ( name )
+          ),
+          stations!inner ( slug )
+        `
+        )
+        .eq("station_id", station.id)
+        .eq("is_deleted", false)
+        .eq("is_likely_not_music", false)
+        .order("time_played", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+
+      const play = data[0] as any;
+      return {
+        station: station.slug,
+        title: play.songs.title,
+        artist: play.songs.artists.name,
+        time_played: play.time_played,
+      };
+    })
+  );
+
+  return results.filter(Boolean) as {
+    station: string;
+    title: string;
+    artist: string;
+    time_played: string;
+  }[];
+}
+
 export async function getArtistCount(query?: string) {
   let q = getSupabase()
     .from("artists")
@@ -115,6 +165,138 @@ async function findArtistId(artistName: string): Promise<number | null> {
     throw artistError;
   }
   return artist.id;
+}
+
+async function findSongId(
+  artistName: string,
+  songTitle: string
+): Promise<number | null> {
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+
+  const { data: song, error } = await getSupabase()
+    .from("songs")
+    .select("id")
+    .eq("artist_id", artistId)
+    .ilike("title", songTitle)
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return song.id;
+}
+
+export async function getSongPlayCount(artistName: string, songTitle: string) {
+  const songId = await findSongId(artistName, songTitle);
+  if (songId === null) return null;
+
+  const { count, error } = await getSupabase()
+    .from("plays")
+    .select("*", { count: "exact", head: true })
+    .eq("song_id", songId)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function getSongPlays(
+  artistName: string,
+  songTitle: string,
+  offset: number = 0,
+  limit: number = 50
+) {
+  const songId = await findSongId(artistName, songTitle);
+  if (songId === null) return null;
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      id,
+      time_played,
+      stations!inner ( slug )
+    `
+    )
+    .eq("song_id", songId)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false)
+    .order("time_played", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  return data.map((play: any) => ({
+    id: play.id,
+    time_played: play.time_played,
+    station: play.stations.slug,
+  }));
+}
+
+export async function getSongStationBreakdown(
+  artistName: string,
+  songTitle: string
+) {
+  const songId = await findSongId(artistName, songTitle);
+  if (songId === null) return null;
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      stations!inner ( slug )
+    `
+    )
+    .eq("song_id", songId)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  if (!data) return [];
+
+  const counts: Record<string, number> = {};
+  for (const play of data as any[]) {
+    const slug = play.stations.slug;
+    counts[slug] = (counts[slug] ?? 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([station, playCount]) => ({ station, playCount }));
+}
+
+export async function getArtistStationBreakdown(artistName: string) {
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      stations!inner ( slug ),
+      songs!inner ( artist_id )
+    `
+    )
+    .eq("songs.artist_id", artistId)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  if (!data) return [];
+
+  const counts: Record<string, number> = {};
+  for (const play of data as any[]) {
+    const slug = play.stations.slug;
+    counts[slug] = (counts[slug] ?? 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([station, playCount]) => ({ station, playCount }));
 }
 
 export async function getArtistPlayCount(artistName: string) {
@@ -169,4 +351,320 @@ export async function getArtistPlays(
     time_played: play.time_played,
     station: (play.stations as any).slug,
   }));
+}
+
+export async function getAllStationSlugs() {
+  const { data, error } = await getSupabase()
+    .from("stations")
+    .select("slug")
+    .order("slug");
+
+  if (error) throw error;
+  return (data ?? []).map((s) => s.slug);
+}
+
+async function resolveStationIds(slugs: string[]): Promise<number[]> {
+  const { data, error } = await getSupabase()
+    .from("stations")
+    .select("id")
+    .in("slug", slugs);
+
+  if (error) throw error;
+  return (data ?? []).map((s) => s.id);
+}
+
+export async function getTopArtistsForMonth(
+  year: number,
+  month: number,
+  limit: number = 10,
+  stationSlugs?: string[]
+) {
+  const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
+
+  let q = getSupabase()
+    .from("plays")
+    .select(
+      `
+      songs!inner (
+        artists!inner ( name )
+      )
+    `
+    )
+    .gte("time_played", startOfMonth)
+    .lt("time_played", startOfNextMonth)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (stationSlugs && stationSlugs.length > 0) {
+    const ids = await resolveStationIds(stationSlugs);
+    q = q.in("station_id", ids);
+  }
+
+  const { data, error } = await q;
+
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const counts: Record<string, number> = {};
+  for (const play of data as any[]) {
+    const name = play.songs.artists.name;
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, playCount]) => ({ name, playCount }));
+}
+
+export async function getTopSongsForMonth(
+  year: number,
+  month: number,
+  limit: number = 10,
+  stationSlugs?: string[]
+) {
+  const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
+
+  let q = getSupabase()
+    .from("plays")
+    .select(
+      `
+      songs!inner (
+        title,
+        artists!inner ( name )
+      )
+    `
+    )
+    .gte("time_played", startOfMonth)
+    .lt("time_played", startOfNextMonth)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (stationSlugs && stationSlugs.length > 0) {
+    const ids = await resolveStationIds(stationSlugs);
+    q = q.in("station_id", ids);
+  }
+
+  const { data, error } = await q;
+
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const counts: Record<string, { title: string; artist: string; count: number }> = {};
+  for (const play of data as any[]) {
+    const title = play.songs.title;
+    const artist = play.songs.artists.name;
+    const key = `${title}:::${artist}`;
+    if (!counts[key]) {
+      counts[key] = { title, artist, count: 0 };
+    }
+    counts[key].count += 1;
+  }
+
+  return Object.values(counts)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map(({ title, artist, count }) => ({ title, artist, playCount: count }));
+}
+
+export async function getStations() {
+  const { data: stations, error } = await getSupabase()
+    .from("stations")
+    .select("id, slug");
+
+  if (error) throw error;
+  if (!stations) return [];
+
+  const results = await Promise.all(
+    stations.map(async (station) => {
+      const [countResult, latestResult] = await Promise.all([
+        getSupabase()
+          .from("plays")
+          .select("*", { count: "exact", head: true })
+          .eq("station_id", station.id)
+          .eq("is_deleted", false)
+          .eq("is_likely_not_music", false),
+        getSupabase()
+          .from("plays")
+          .select(
+            `
+            time_played,
+            songs!inner (
+              title,
+              artists!inner ( name )
+            )
+          `
+          )
+          .eq("station_id", station.id)
+          .eq("is_deleted", false)
+          .eq("is_likely_not_music", false)
+          .order("time_played", { ascending: false })
+          .limit(1),
+      ]);
+
+      if (countResult.error) throw countResult.error;
+      if (latestResult.error) throw latestResult.error;
+
+      const latest = latestResult.data?.[0] as any;
+      return {
+        slug: station.slug,
+        playCount: countResult.count ?? 0,
+        latestSong: latest
+          ? {
+              title: latest.songs.title,
+              artist: latest.songs.artists.name,
+              time_played: latest.time_played,
+            }
+          : null,
+      };
+    })
+  );
+
+  return results;
+}
+
+export async function getStationPlayCount(slug: string) {
+  const { data: station } = await getSupabase()
+    .from("stations")
+    .select("id")
+    .eq("slug", slug)
+    .single();
+
+  if (!station) return null;
+
+  const { count, error } = await getSupabase()
+    .from("plays")
+    .select("*", { count: "exact", head: true })
+    .eq("station_id", station.id)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function getStationPlays(
+  slug: string,
+  offset: number = 0,
+  limit: number = 50
+) {
+  const { data: station } = await getSupabase()
+    .from("stations")
+    .select("id")
+    .eq("slug", slug)
+    .single();
+
+  if (!station) return null;
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      id,
+      time_played,
+      songs!inner (
+        title,
+        artists!inner ( name )
+      ),
+      stations!inner ( slug )
+    `
+    )
+    .eq("station_id", station.id)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false)
+    .order("time_played", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  return data.map((play: any) => ({
+    id: play.id,
+    artist: play.songs.artists.name,
+    title: play.songs.title,
+    time_played: play.time_played,
+    station: play.stations.slug,
+  }));
+}
+
+export async function getTopArtistsForStation(slug: string, limit: number = 10) {
+  const { data: station } = await getSupabase()
+    .from("stations")
+    .select("id")
+    .eq("slug", slug)
+    .single();
+
+  if (!station) return [];
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      songs!inner (
+        artists!inner ( name )
+      )
+    `
+    )
+    .eq("station_id", station.id)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const counts: Record<string, number> = {};
+  for (const play of data as any[]) {
+    const name = play.songs.artists.name;
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, playCount]) => ({ name, playCount }));
+}
+
+export async function getArtistPlayCounts(artistIds: number[]) {
+  if (artistIds.length === 0) return {};
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      songs!inner ( artist_id )
+    `
+    )
+    .in("songs.artist_id", artistIds)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  if (!data) return {};
+
+  const counts: Record<number, number> = {};
+  for (const play of data as any[]) {
+    const artistId = play.songs.artist_id;
+    counts[artistId] = (counts[artistId] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
+export async function getEarliestPlayDate() {
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select("time_played")
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false)
+    .order("time_played", { ascending: true })
+    .limit(1);
+
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return data[0].time_played;
 }

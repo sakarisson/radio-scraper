@@ -2,16 +2,16 @@ import { z } from "zod";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  getArtistPlays,
-  getArtistPlayCount,
-  getArtistStationBreakdown,
+  getSongPlays,
+  getSongPlayCount,
+  getSongStationBreakdown,
 } from "@/utils/database";
 import format from "date-fns/format";
 import { heading } from "@/styles/typography.css";
 import * as styles from "@/styles/artist-detail.css";
 import { strings } from "@/utils/strings";
 import { StationBadge } from "@/app/components/StationBadge";
-import { Pagination } from "../components/Pagination";
+import { Pagination } from "../../components/Pagination";
 
 const PAGE_SIZE = 50;
 
@@ -21,22 +21,23 @@ const paramsSchema = z
   })
   .optional();
 
-export default async function ArtistPage({
+export default async function SongPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
+  params: { slug: string; song: string };
   searchParams?: unknown;
 }) {
   const artistName = decodeURIComponent(params.slug);
+  const songTitle = decodeURIComponent(params.song);
   const parsed = paramsSchema.safeParse(searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const offset = page * PAGE_SIZE;
 
   const [plays, totalCount, stationBreakdown] = await Promise.all([
-    getArtistPlays(artistName, offset, PAGE_SIZE),
-    getArtistPlayCount(artistName),
-    getArtistStationBreakdown(artistName),
+    getSongPlays(artistName, songTitle, offset, PAGE_SIZE),
+    getSongPlayCount(artistName, songTitle),
+    getSongStationBreakdown(artistName, songTitle),
   ]);
 
   if (plays === null || totalCount === null) {
@@ -51,12 +52,12 @@ export default async function ArtistPage({
 
   return (
     <div>
-      <Link href="/artists" className={styles.backLink}>
-        {strings.allArtists}
+      <Link href={`/artists/${params.slug}`} className={styles.backLink}>
+        {strings.backToArtist(artistName)}
       </Link>
 
       <div className={styles.headerRow}>
-        <h1 className={heading}>{artistName}</h1>
+        <h1 className={heading}>{songTitle}</h1>
         <span className={styles.playCount}>
           {totalCount.toLocaleString("en-US")}{" "}
           {totalCount === 1 ? strings.play : strings.playsLabel}
@@ -77,22 +78,13 @@ export default async function ArtistPage({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={styles.th}>{strings.title}</th>
             <th className={styles.th}>{strings.station}</th>
             <th className={styles.th}>{strings.timePlayed}</th>
           </tr>
         </thead>
         <tbody>
-          {plays.map(({ title, time_played, station, id }) => (
+          {plays.map(({ time_played, station, id }) => (
             <tr key={id}>
-              <td className={styles.td}>
-                <Link
-                  href={`/artists/${params.slug}/${encodeURIComponent(title)}`}
-                  className={styles.songLink}
-                >
-                  {title}
-                </Link>
-              </td>
               <td className={styles.td}>
                 <StationBadge station={station} />
               </td>
@@ -103,14 +95,8 @@ export default async function ArtistPage({
       </table>
 
       <div className={styles.mobileList}>
-        {plays.map(({ title, time_played, station, id }) => (
+        {plays.map(({ time_played, station, id }) => (
           <div key={id} className={styles.mobileCard}>
-            <Link
-              href={`/artists/${params.slug}/${encodeURIComponent(title)}`}
-              className={styles.mobileTitle}
-            >
-              {title}
-            </Link>
             <div className={styles.mobileMeta}>
               <StationBadge station={station} />
               <span>{formatDate(time_played)}</span>
@@ -122,8 +108,10 @@ export default async function ArtistPage({
       <Pagination
         currentPage={page}
         totalPages={totalPages}
-        basePath={`/artists/${params.slug}`}
+        basePath={`/artists/${params.slug}/${params.song}`}
       />
     </div>
   );
 }
+
+export const dynamic = "force-dynamic";
