@@ -44,7 +44,7 @@ export const nav = style({
 export const navLink = style({
   fontSize: vars.fontSize.sm,
   fontFamily: vars.font.body,
-  color: "#94a3b8",
+  color: vars.color.textMuted,
   textDecoration: "none",
   transition: "color 150ms ease",
   ":hover": {

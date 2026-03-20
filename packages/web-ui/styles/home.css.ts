@@ -2,9 +2,10 @@ import { style } from "@vanilla-extract/css";
 import { vars } from "./theme.css";
 
 export const hero = style({
-  backgroundColor: vars.color.bgDark,
+  backgroundColor: vars.color.accentLight,
   margin: `-${vars.space["8"]} -${vars.space["4"]} ${vars.space["8"]} -${vars.space["4"]}`,
   padding: `${vars.space["12"]} ${vars.space["4"]}`,
+  borderBottom: `1px solid ${vars.color.border}`,
   "@media": {
     "(min-width: 640px)": {
       margin: `-${vars.space["8"]} -${vars.space["6"]} ${vars.space["8"]} -${vars.space["6"]}`,
@@ -17,7 +18,7 @@ export const heroTitle = style({
   fontSize: vars.fontSize["3xl"],
   fontFamily: vars.font.body,
   fontWeight: 700,
-  color: vars.color.textOnDark,
+  color: vars.color.textPrimary,
   lineHeight: 1.2,
   letterSpacing: "-0.02em",
 });
@@ -25,7 +26,7 @@ export const heroTitle = style({
 export const subtitle = style({
   fontSize: vars.fontSize.lg,
   fontFamily: vars.font.body,
-  color: "#94a3b8",
+  color: vars.color.textSecondary,
   marginTop: vars.space["2"],
 });
 
@@ -50,12 +51,6 @@ export const stationCards = style({
   },
 });
 
-const stationAccentColors: Record<string, string> = {
-  kvf: "#2563eb",
-  ras2: "#d97706",
-  lindin: "#16a34a",
-};
-
 export const stationCard = style({
   backgroundColor: vars.color.bgSurface,
   border: `1px solid ${vars.color.border}`,
@@ -64,21 +59,21 @@ export const stationCard = style({
   borderLeft: `4px solid ${vars.color.accent}`,
   transition: "box-shadow 150ms ease, transform 150ms ease",
   ":hover": {
-    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 2px 8px rgba(26, 35, 50, 0.08)",
     transform: "translateY(-1px)",
   },
 });
 
 export const stationCardKvf = style({
-  borderLeftColor: stationAccentColors.kvf,
+  borderLeftColor: "#4a7c9b",
 });
 
 export const stationCardRas2 = style({
-  borderLeftColor: stationAccentColors.ras2,
+  borderLeftColor: "#8b7355",
 });
 
 export const stationCardLindin = style({
-  borderLeftColor: stationAccentColors.lindin,
+  borderLeftColor: "#5a8a6a",
 });
 
 export const stationName = style({

@@ -5,7 +5,7 @@
   ],
   "scripts": {
     "start:scraper": "cd packages/scraper && ts-node src/scraper.ts",
-    "start:web": "cd packages/web-ui && next dev",
+    "start:web": "pnpm --filter web-ui run dev",
     "build:web": "pnpm --filter web-ui run build",
     "build:scraper": "pnpm --filter scraper run build",
     "serve:web": "pnpm --filter web-ui run start",
