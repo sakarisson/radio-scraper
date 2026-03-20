@@ -56,10 +56,10 @@ const scrape = () =>
 
         await insertRawData({ playId, rawData });
       } catch (error) {
-        // console.error(
-        //   `Error fetching data for station ${fetcher.slug}`,
-        //   error
-        // );
+        console.error(
+          `Error fetching data for station ${fetcher.slug}`,
+          error
+        );
       }
     })
   );
