@@ -73,6 +73,7 @@ export const listSection = style({
   border: `1px solid ${vars.color.border}`,
   borderRadius: vars.radius.md,
   padding: vars.space["4"],
+  minWidth: 0,
 });
 
 export const listHeading = style({
@@ -123,9 +124,6 @@ export const rankName = style({
   fontFamily: vars.font.body,
   fontWeight: 500,
   color: vars.color.textPrimary,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
   textDecoration: "none",
   transition: "color 150ms ease",
   ":hover": {
