@@ -66,7 +66,12 @@ export default async function StationDetailPage({
             {plays.map((play) => (
               <div key={play.id} className={styles.playItem}>
                 <div className={styles.playInfo}>
-                  <span className={styles.playTitle}>{play.title}</span>
+                  <Link
+                    href={`/artists/${play.artist}/${encodeURIComponent(play.title)}`}
+                    className={styles.playTitle}
+                  >
+                    {play.title}
+                  </Link>
                   <Link
                     href={`/artists/${play.artist}`}
                     className={styles.playArtist}

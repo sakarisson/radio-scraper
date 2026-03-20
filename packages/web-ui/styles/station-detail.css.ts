@@ -78,13 +78,19 @@ export const playInfo = style({
 });
 
 export const playTitle = style({
+  display: "block",
   fontSize: vars.fontSize.base,
   fontFamily: vars.font.body,
   fontWeight: 500,
   color: vars.color.textPrimary,
+  textDecoration: "none",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+  transition: "color 150ms ease",
+  ":hover": {
+    color: vars.color.accent,
+  },
 });
 
 export const playArtist = style({

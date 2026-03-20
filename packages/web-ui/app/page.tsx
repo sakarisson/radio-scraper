@@ -39,7 +39,12 @@ export default async function Home() {
             className={`${styles.stationCard} ${stationCardAccent[play.station] ?? ""}`}
           >
             <div className={styles.stationName}>{play.station}</div>
-            <div className={styles.stationSong}>{play.title}</div>
+            <Link
+              href={`/artists/${play.artist}/${encodeURIComponent(play.title)}`}
+              className={styles.stationSong}
+            >
+              {play.title}
+            </Link>
             <Link
               href={`/artists/${play.artist}`}
               className={styles.stationArtist}
@@ -81,7 +86,12 @@ export default async function Home() {
         {recentPlays.map((play) => (
           <div key={play.id} className={styles.recentItem}>
             <div className={styles.recentInfo}>
-              <span className={styles.recentTitle}>{play.title}</span>
+              <Link
+                href={`/artists/${play.artist}/${encodeURIComponent(play.title)}`}
+                className={styles.recentTitle}
+              >
+                {play.title}
+              </Link>
               <span className={styles.recentMeta}>
                 <Link href={`/artists/${play.artist}`} className={link}>
                   {play.artist}

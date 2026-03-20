@@ -199,7 +199,12 @@ export default async function ChartsPage({
                 >
                   <span className={styles.rankNumber}>{i + 1}</span>
                   <div className={styles.rankInfo}>
-                    <div className={styles.rankName}>{song.title}</div>
+                    <Link
+                      href={`/artists/${song.artist}/${encodeURIComponent(song.title)}`}
+                      className={styles.rankName}
+                    >
+                      {song.title}
+                    </Link>
                     <div className={styles.rankArtist}>
                       <Link
                         href={`/artists/${song.artist}`}

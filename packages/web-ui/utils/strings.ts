@@ -22,8 +22,7 @@ export const strings = {
   timePlayed: "Time played",
   previousPage: "\u2190 Previous",
   nextPage: "Next \u2192",
-  pageOf: (current: number, total: number) =>
-    `Page ${current} of ${total}`,
+  pageOf: (current: number, total: number) => `Page ${current} of ${total}`,
   notFoundCode: "404",
   notFoundMessage: "This page could not be found.",
   goBackHome: "Go back home",
@@ -41,6 +40,7 @@ export const strings = {
   totalPlays: "total plays",
   mostRecent: "Most recent",
   topArtistsForStation: "Top artists",
+  backToArtist: (name: string) => `\u2190 ${name}`,
   allStations: "\u2190 All stations",
   footerText: (date: string) => `Tracking Faroese radio since ${date}`,
 } as const;

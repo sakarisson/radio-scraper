@@ -29,6 +29,19 @@ export const playCount = style({
   color: vars.color.textSecondary,
 });
 
+export const stationBreakdown = style({
+  display: "flex",
+  gap: vars.space["3"],
+  marginBottom: vars.space["6"],
+  flexWrap: "wrap",
+});
+
+export const stationBreakdownItem = style({
+  display: "flex",
+  alignItems: "center",
+  gap: vars.space["2"],
+});
+
 export const table = style({
   width: "100%",
   borderCollapse: "collapse",
@@ -85,12 +98,27 @@ export const mobileCard = style({
   padding: vars.space["4"],
 });
 
+export const songLink = style({
+  color: vars.color.textPrimary,
+  textDecoration: "none",
+  transition: "color 150ms ease",
+  ":hover": {
+    color: vars.color.accent,
+  },
+});
+
 export const mobileTitle = style({
+  display: "block",
   fontSize: vars.fontSize.base,
   fontFamily: vars.font.body,
   fontWeight: 500,
   color: vars.color.textPrimary,
+  textDecoration: "none",
   marginBottom: vars.space["1"],
+  transition: "color 150ms ease",
+  ":hover": {
+    color: vars.color.accent,
+  },
 });
 
 export const mobileMeta = style({

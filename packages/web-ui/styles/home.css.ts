@@ -87,13 +87,19 @@ export const stationName = style({
 });
 
 export const stationSong = style({
+  display: "block",
   fontSize: vars.fontSize.base,
   fontFamily: vars.font.body,
   fontWeight: 500,
   color: vars.color.textPrimary,
+  textDecoration: "none",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+  transition: "color 150ms ease",
+  ":hover": {
+    color: vars.color.accent,
+  },
 });
 
 export const stationArtist = style({
@@ -179,13 +185,19 @@ export const recentInfo = style({
 });
 
 export const recentTitle = style({
+  display: "block",
   fontSize: vars.fontSize.base,
   fontFamily: vars.font.body,
   color: vars.color.textPrimary,
+  textDecoration: "none",
   fontWeight: 500,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+  transition: "color 150ms ease",
+  ":hover": {
+    color: vars.color.accent,
+  },
 });
 
 export const recentMeta = style({
