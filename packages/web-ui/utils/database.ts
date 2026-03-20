@@ -17,6 +17,34 @@ function getSupabase() {
   return _supabase;
 }
 
+const PAGE_SIZE = 1000;
+
+/**
+ * Fetches all rows from a Supabase query by paginating through results.
+ * Supabase defaults to returning at most 1000 rows; this helper fetches
+ * successive pages until all rows are retrieved.
+ */
+async function fetchAllRows<T>(
+  buildQuery: () => { range: (from: number, to: number) => PromiseLike<{ data: any; error: any }> }
+): Promise<T[]> {
+  const allRows: T[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await buildQuery().range(
+      offset,
+      offset + PAGE_SIZE - 1
+    );
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allRows.push(...(data as T[]));
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 export async function getStats() {
   const [artists, songs, plays] = await Promise.all([
     getSupabase()
@@ -244,22 +272,21 @@ export async function getSongStationBreakdown(
   const songId = await findSongId(artistName, songTitle);
   if (songId === null) return null;
 
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
+  const data = await fetchAllRows<any>(() =>
+    getSupabase()
+      .from("plays")
+      .select(
+        `
+        stations!inner ( slug )
       `
-      stations!inner ( slug )
-    `
-    )
-    .eq("song_id", songId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
-
-  if (error) throw error;
-  if (!data) return [];
+      )
+      .eq("song_id", songId)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+  );
 
   const counts: Record<string, number> = {};
-  for (const play of data as any[]) {
+  for (const play of data) {
     const slug = play.stations.slug;
     counts[slug] = (counts[slug] ?? 0) + 1;
   }
@@ -273,23 +300,22 @@ export async function getArtistStationBreakdown(artistName: string) {
   const artistId = await findArtistId(artistName);
   if (artistId === null) return null;
 
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
+  const data = await fetchAllRows<any>(() =>
+    getSupabase()
+      .from("plays")
+      .select(
+        `
+        stations!inner ( slug ),
+        songs!inner ( artist_id )
       `
-      stations!inner ( slug ),
-      songs!inner ( artist_id )
-    `
-    )
-    .eq("songs.artist_id", artistId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
-
-  if (error) throw error;
-  if (!data) return [];
+      )
+      .eq("songs.artist_id", artistId)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+  );
 
   const counts: Record<string, number> = {};
-  for (const play of data as any[]) {
+  for (const play of data) {
     const slug = play.stations.slug;
     counts[slug] = (counts[slug] ?? 0) + 1;
   }
@@ -384,32 +410,36 @@ export async function getTopArtistsForMonth(
   const nextYear = month === 12 ? year + 1 : year;
   const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
 
-  let q = getSupabase()
-    .from("plays")
-    .select(
+  const stationIds =
+    stationSlugs && stationSlugs.length > 0
+      ? await resolveStationIds(stationSlugs)
+      : null;
+
+  const data = await fetchAllRows<any>(() => {
+    let q = getSupabase()
+      .from("plays")
+      .select(
+        `
+        songs!inner (
+          artists!inner ( name )
+        )
       `
-      songs!inner (
-        artists!inner ( name )
       )
-    `
-    )
-    .gte("time_played", startOfMonth)
-    .lt("time_played", startOfNextMonth)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
+      .gte("time_played", startOfMonth)
+      .lt("time_played", startOfNextMonth)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false);
 
-  if (stationSlugs && stationSlugs.length > 0) {
-    const ids = await resolveStationIds(stationSlugs);
-    q = q.in("station_id", ids);
-  }
+    if (stationIds) {
+      q = q.in("station_id", stationIds);
+    }
+    return q;
+  });
 
-  const { data, error } = await q;
-
-  if (error) throw error;
-  if (!data || data.length === 0) return [];
+  if (data.length === 0) return [];
 
   const counts: Record<string, number> = {};
-  for (const play of data as any[]) {
+  for (const play of data) {
     const name = play.songs.artists.name;
     counts[name] = (counts[name] ?? 0) + 1;
   }
@@ -431,33 +461,37 @@ export async function getTopSongsForMonth(
   const nextYear = month === 12 ? year + 1 : year;
   const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
 
-  let q = getSupabase()
-    .from("plays")
-    .select(
+  const stationIds =
+    stationSlugs && stationSlugs.length > 0
+      ? await resolveStationIds(stationSlugs)
+      : null;
+
+  const data = await fetchAllRows<any>(() => {
+    let q = getSupabase()
+      .from("plays")
+      .select(
+        `
+        songs!inner (
+          title,
+          artists!inner ( name )
+        )
       `
-      songs!inner (
-        title,
-        artists!inner ( name )
       )
-    `
-    )
-    .gte("time_played", startOfMonth)
-    .lt("time_played", startOfNextMonth)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
+      .gte("time_played", startOfMonth)
+      .lt("time_played", startOfNextMonth)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false);
 
-  if (stationSlugs && stationSlugs.length > 0) {
-    const ids = await resolveStationIds(stationSlugs);
-    q = q.in("station_id", ids);
-  }
+    if (stationIds) {
+      q = q.in("station_id", stationIds);
+    }
+    return q;
+  });
 
-  const { data, error } = await q;
-
-  if (error) throw error;
-  if (!data || data.length === 0) return [];
+  if (data.length === 0) return [];
 
   const counts: Record<string, { title: string; artist: string; count: number }> = {};
-  for (const play of data as any[]) {
+  for (const play of data) {
     const title = play.songs.title;
     const artist = play.songs.artists.name;
     const key = `${title}:::${artist}`;
@@ -601,24 +635,25 @@ export async function getTopArtistsForStation(slug: string, limit: number = 10) 
 
   if (!station) return [];
 
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
+  const data = await fetchAllRows<any>(() =>
+    getSupabase()
+      .from("plays")
+      .select(
+        `
+        songs!inner (
+          artists!inner ( name )
+        )
       `
-      songs!inner (
-        artists!inner ( name )
       )
-    `
-    )
-    .eq("station_id", station.id)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
+      .eq("station_id", station.id)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+  );
 
-  if (error) throw error;
-  if (!data || data.length === 0) return [];
+  if (data.length === 0) return [];
 
   const counts: Record<string, number> = {};
-  for (const play of data as any[]) {
+  for (const play of data) {
     const name = play.songs.artists.name;
     counts[name] = (counts[name] ?? 0) + 1;
   }
@@ -632,22 +667,21 @@ export async function getTopArtistsForStation(slug: string, limit: number = 10) 
 export async function getArtistPlayCounts(artistIds: number[]) {
   if (artistIds.length === 0) return {};
 
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
+  const data = await fetchAllRows<any>(() =>
+    getSupabase()
+      .from("plays")
+      .select(
+        `
+        songs!inner ( artist_id )
       `
-      songs!inner ( artist_id )
-    `
-    )
-    .in("songs.artist_id", artistIds)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
-
-  if (error) throw error;
-  if (!data) return {};
+      )
+      .in("songs.artist_id", artistIds)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+  );
 
   const counts: Record<number, number> = {};
-  for (const play of data as any[]) {
+  for (const play of data) {
     const artistId = play.songs.artist_id;
     counts[artistId] = (counts[artistId] ?? 0) + 1;
   }
