@@ -13,6 +13,12 @@ export function Header() {
           <Link href="/artists" className={styles.navLink}>
             {strings.navArtists}
           </Link>
+          <Link href="/charts" className={styles.navLink}>
+            {strings.navCharts}
+          </Link>
+          <Link href="/stations" className={styles.navLink}>
+            {strings.navStations}
+          </Link>
         </nav>
       </div>
     </header>

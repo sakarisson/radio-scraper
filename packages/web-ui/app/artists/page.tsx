@@ -1,6 +1,6 @@
 import { z } from "zod";
 import Link from "next/link";
-import { searchArtists, getArtistCount } from "@/utils/database";
+import { searchArtists, getArtistCount, getArtistPlayCounts } from "@/utils/database";
 import { heading } from "@/styles/typography.css";
 import * as styles from "@/styles/artists.css";
 import { strings } from "@/utils/strings";
@@ -32,6 +32,9 @@ export default async function ArtistsPage(props: Props) {
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
+  const artistIds = artists?.map((a) => a.id) ?? [];
+  const playCounts = artistIds.length > 0 ? await getArtistPlayCounts(artistIds) : {};
+
   return (
     <div>
       <h1 className={heading}>{strings.artists}</h1>
@@ -50,7 +53,12 @@ export default async function ArtistsPage(props: Props) {
         <div className={styles.artistList}>
           {artists.map(({ id, name }) => (
             <Link href={`/artists/${name}`} key={id} className={styles.artistRow}>
-              {name}
+              <span className={styles.artistName}>{name}</span>
+              {playCounts[id] != null && playCounts[id] > 0 && (
+                <span className={styles.playCountBadge}>
+                  {playCounts[id].toLocaleString("en-US")} {strings.playsLabel}
+                </span>
+              )}
             </Link>
           ))}
         </div>

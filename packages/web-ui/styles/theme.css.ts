@@ -2,16 +2,18 @@ import { createGlobalTheme } from "@vanilla-extract/css";
 
 export const vars = createGlobalTheme(":root", {
   color: {
-    textPrimary: "#1a1a2e",
-    textSecondary: "#555770",
-    textMuted: "#8a8da0",
-    bgPage: "#f8f9fb",
+    textPrimary: "#0f172a",
+    textSecondary: "#475569",
+    textMuted: "#94a3b8",
+    bgPage: "#f1f5f9",
     bgSurface: "#ffffff",
-    bgHover: "#f0f1f5",
-    border: "#e2e4ea",
-    accent: "#4a6fa5",
-    accentHover: "#3d5d8a",
-    accentLight: "#eef2f8",
+    bgHover: "#e2e8f0",
+    border: "#cbd5e1",
+    accent: "#2563eb",
+    accentHover: "#1d4ed8",
+    accentLight: "#eff6ff",
+    bgDark: "#0f172a",
+    textOnDark: "#f8fafc",
   },
   space: {
     "1": "4px",
