@@ -14,7 +14,8 @@ const getOrCreateArtistId = async (artistName: string): Promise<number> => {
   const { data: existing } = await supabase
     .from('artists')
     .select('id')
-    .eq('name', artistName)
+    .ilike('name', artistName)
+    .limit(1)
     .single();
 
   if (existing) return existing.id;
@@ -39,8 +40,9 @@ const getOrCreateSongId = async ({
   const { data: existing } = await supabase
     .from('songs')
     .select('id')
-    .eq('title', songName)
+    .ilike('title', songName)
     .eq('artist_id', artistId)
+    .limit(1)
     .single();
 
   if (existing) return existing.id;
