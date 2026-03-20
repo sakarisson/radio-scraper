@@ -4,6 +4,11 @@ RUN corepack enable && corepack prepare pnpm@8.6.9 --activate
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
+
+ARG SUPABASE_URL
+ARG SUPABASE_SERVICE_ROLE_KEY
+ENV SUPABASE_URL=$SUPABASE_URL
+ENV SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 RUN pnpm --filter web-ui build
 
 ENV PORT=8080
