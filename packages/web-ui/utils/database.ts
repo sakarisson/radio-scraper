@@ -103,19 +103,23 @@ export async function searchArtists(
   return data;
 }
 
-async function findArtistId(artistName: string) {
+async function findArtistId(artistName: string): Promise<number | null> {
   const { data: artist, error: artistError } = await getSupabase()
     .from("artists")
     .select("id")
-    .ilike("name", artistName)
+    .eq("name", artistName)
     .single();
 
-  if (artistError) throw artistError;
+  if (artistError) {
+    if (artistError.code === "PGRST116") return null;
+    throw artistError;
+  }
   return artist.id;
 }
 
 export async function getArtistPlayCount(artistName: string) {
   const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
 
   const { count, error } = await getSupabase()
     .from("plays")
@@ -134,6 +138,7 @@ export async function getArtistPlays(
   limit: number = 50
 ) {
   const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
 
   const { data, error } = await getSupabase()
     .from("plays")

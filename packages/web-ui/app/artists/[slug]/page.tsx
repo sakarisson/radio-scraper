@@ -1,5 +1,6 @@
 import { z } from "zod";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getArtistPlays, getArtistPlayCount } from "@/utils/database";
 import format from "date-fns/format";
 import { heading } from "@/styles/typography.css";
@@ -32,6 +33,10 @@ export default async function ArtistPage({
     getArtistPlays(artistName, offset, PAGE_SIZE),
     getArtistPlayCount(artistName),
   ]);
+
+  if (plays === null || totalCount === null) {
+    notFound();
+  }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
