@@ -36,8 +36,8 @@ const scrape = () =>
 
         if (
           mostRecentPlay &&
-          mostRecentPlay.artist === artist &&
-          mostRecentPlay.title === title
+          mostRecentPlay.artist.toLowerCase() === artist.toLowerCase() &&
+          mostRecentPlay.title.toLowerCase() === title.toLowerCase()
         ) {
           return;
         }
