@@ -1,15 +1,16 @@
 import { style, keyframes } from "@vanilla-extract/css";
 import { vars } from "./theme.css";
 
-const pulse = keyframes({
-  "0%, 100%": { opacity: 1 },
-  "50%": { opacity: 0.4 },
+const shimmer = keyframes({
+  "0%": { backgroundPosition: "-200% 0" },
+  "100%": { backgroundPosition: "200% 0" },
 });
 
 const skeleton = style({
-  backgroundColor: vars.color.border,
   borderRadius: vars.radius.sm,
-  animation: `${pulse} 1.5s ease-in-out infinite`,
+  background: `linear-gradient(90deg, ${vars.color.border} 25%, ${vars.color.bgHover} 50%, ${vars.color.border} 75%)`,
+  backgroundSize: "200% 100%",
+  animation: `${shimmer} 1.8s ease-in-out infinite`,
 });
 
 export const skeletonHeading = style([
