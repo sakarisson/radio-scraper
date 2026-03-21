@@ -44,7 +44,7 @@ export const fetchers: Array<{
         });
 
       if (!parsedAgain.success) {
-        throw new Error('No artist or title');
+        return null;
       }
 
       return { ...parsedAgain.data, rawData: data };
@@ -74,7 +74,7 @@ export const fetchers: Array<{
             } = schema.parse(JSON.parse(event.data));
 
             if (!artist || !title) {
-              reject(new Error('No artist or title'));
+              resolve(null);
             } else {
               resolve({
                 artist,
@@ -120,7 +120,7 @@ export const fetchers: Array<{
             } = schema.parse(JSON.parse(event.data));
 
             if (!artist || !title) {
-              reject(new Error('No artist or title'));
+              resolve(null);
             } else {
               resolve({
                 artist,

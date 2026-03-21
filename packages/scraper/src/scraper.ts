@@ -28,9 +28,11 @@ const scrape = () =>
     fetchers.map(async (fetcher) => {
       try {
         const { slug, fetchData } = fetcher;
-        const { artist, title, rawData } = await fetchData().then(
-          processPlayingEvent
-        );
+        const result = await fetchData().then(processPlayingEvent);
+
+        if (!result) return;
+
+        const { artist, title, rawData } = result;
 
         const mostRecentPlay = await getMostRecentPlay(slug);
 
