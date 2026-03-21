@@ -1,6 +1,10 @@
 import { z } from "zod";
 import Link from "next/link";
-import { searchArtists, getArtistCount, getArtistPlayCounts } from "@/utils/database";
+import {
+  getTopArtistsForMonth,
+  getTopArtistsAllTime,
+  getArtistCountWithPlays,
+} from "@/utils/database";
 import { heading } from "@/styles/typography.css";
 import * as styles from "@/styles/artists.css";
 import { strings } from "@/utils/strings";
@@ -19,25 +23,95 @@ const paramsSchema = z
   })
   .optional();
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 export default async function ArtistsPage(props: Props) {
   const parsed = paramsSchema.safeParse(props.searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const query = parsed.success ? parsed.data?.q : undefined;
   const offset = page * PAGE_SIZE;
+  const isSearching = !!query;
 
-  const [artists, totalCount] = await Promise.all([
-    searchArtists(query, offset, PAGE_SIZE),
-    getArtistCount(query),
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const [leaderboard, totalCount, featuredArtists] = await Promise.all([
+    getTopArtistsAllTime(offset, PAGE_SIZE, query),
+    getArtistCountWithPlays(query),
+    isSearching
+      ? Promise.resolve([])
+      : getTopArtistsForMonth(currentYear, currentMonth, 5),
   ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const artistIds = artists?.map((a) => a.id) ?? [];
-  const playCounts = artistIds.length > 0 ? await getArtistPlayCounts(artistIds) : {};
-
   return (
     <div>
       <h1 className={heading}>{strings.artists}</h1>
+
+      {!isSearching && featuredArtists.length > 0 && (
+        <div className={styles.featuredSection}>
+          <div className={styles.featuredHeader}>
+            <span className={styles.featuredTitle}>Top this month</span>
+            <span className={styles.featuredMonthLabel}>
+              {MONTH_NAMES[currentMonth - 1]} {currentYear}
+            </span>
+          </div>
+          <div className={styles.featuredGrid}>
+            <div className={styles.featuredCard}>
+              <div className={styles.featuredList}>
+                {featuredArtists.slice(0, 3).map((artist, i) => (
+                  <div key={artist.name} className={styles.featuredItem}>
+                    <span className={styles.featuredRank}>{i + 1}</span>
+                    <Link
+                      href={`/artists/${artist.name}`}
+                      className={styles.featuredName}
+                    >
+                      {artist.name}
+                    </Link>
+                    <span className={styles.featuredCount}>
+                      {artist.playCount.toLocaleString("en-US")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {featuredArtists.length > 3 && (
+              <div className={styles.featuredCard}>
+                <div className={styles.featuredList}>
+                  {featuredArtists.slice(3).map((artist, i) => (
+                    <div key={artist.name} className={styles.featuredItem}>
+                      <span className={styles.featuredRank}>{i + 4}</span>
+                      <Link
+                        href={`/artists/${artist.name}`}
+                        className={styles.featuredName}
+                      >
+                        {artist.name}
+                      </Link>
+                      <span className={styles.featuredCount}>
+                        {artist.playCount.toLocaleString("en-US")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className={styles.leaderboardHeader}>
+        <span className={styles.leaderboardTitle}>
+          All artists
+        </span>
+        <span className={styles.leaderboardCount}>
+          {totalCount.toLocaleString("en-US")}
+        </span>
+      </div>
 
       <form action="/artists" method="GET" className={styles.searchForm}>
         <input
@@ -49,16 +123,21 @@ export default async function ArtistsPage(props: Props) {
         />
       </form>
 
-      {artists && artists.length > 0 ? (
-        <div className={styles.artistList}>
-          {artists.map(({ id, name }) => (
-            <Link href={`/artists/${name}`} key={id} className={styles.artistRow}>
-              <span className={styles.artistName}>{name}</span>
-              {playCounts[id] != null && playCounts[id] > 0 && (
-                <span className={styles.playCountBadge}>
-                  {playCounts[id].toLocaleString("en-US")} {strings.playsLabel}
-                </span>
-              )}
+      {leaderboard.length > 0 ? (
+        <div className={styles.leaderboardList}>
+          {leaderboard.map((artist, i) => (
+            <Link
+              href={`/artists/${artist.name}`}
+              key={artist.id}
+              className={styles.leaderboardRow}
+            >
+              <span className={styles.leaderboardRank}>
+                {(offset + i + 1).toLocaleString("en-US")}
+              </span>
+              <span className={styles.leaderboardName}>{artist.name}</span>
+              <span className={styles.leaderboardPlayCount}>
+                {artist.playCount.toLocaleString("en-US")}
+              </span>
             </Link>
           ))}
         </div>
