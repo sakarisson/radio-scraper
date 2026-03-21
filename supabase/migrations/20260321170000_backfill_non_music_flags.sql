@@ -19,8 +19,10 @@ WHERE plays.song_id = s.id
     OR (a.name || ' ' || s.title) ~* '\.(fo|dk|com|net|org|is)\y'
     -- "tlf" keyword
     OR (a.name || ' ' || s.title) ~* '\mtlf\M'
-    -- Station names
-    OR (a.name || ' ' || s.title) ~* '\m(kvf|kvf2|aldan|alduni|kringvarp|rás\s*2)\M'
+    -- Station names (unambiguous — check both artist and title)
+    OR (a.name || ' ' || s.title) ~* '\m(alduni|kringvarp|rás\s*2)\M'
+    -- Station names (ambiguous — only check artist to avoid false positives)
+    OR a.name ~* '\m(aldan|kvf|kvf2)\M'
     -- Election content
     OR (a.name || ' ' || s.title) ~* '\mvalevni\M'
     -- Festival promos
