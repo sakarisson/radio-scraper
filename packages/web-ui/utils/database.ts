@@ -569,6 +569,36 @@ export async function getArtistPlayCounts(
   return counts;
 }
 
+export async function getTopArtistsAllTime(
+  offset: number,
+  limit: number,
+  search?: string
+): Promise<{ id: number; name: string; playCount: number }[]> {
+  const { data, error } = await getSupabase().rpc("top_artists_all_time", {
+    p_limit: limit,
+    p_offset: offset,
+    p_search: search || null,
+  });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.artist_id,
+    name: row.artist_name,
+    playCount: row.play_count,
+  }));
+}
+
+export async function getArtistCountWithPlays(
+  search?: string
+): Promise<number> {
+  const { data, error } = await getSupabase().rpc("artist_count_with_plays", {
+    p_search: search || null,
+  });
+
+  if (error) throw error;
+  return (data as number) ?? 0;
+}
+
 export async function getEarliestPlayDate() {
   const { data, error } = await getSupabase()
     .from("plays")
