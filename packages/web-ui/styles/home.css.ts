@@ -3,12 +3,13 @@ import { vars } from "./theme.css";
 
 export const hero = style({
   backgroundColor: vars.color.accentLight,
-  margin: `-${vars.space["8"]} -${vars.space["4"]} ${vars.space["8"]} -${vars.space["4"]}`,
+  margin: `-${vars.space["8"]} -${vars.space["4"]} ${vars.space["12"]} -${vars.space["4"]}`,
   padding: `${vars.space["12"]} ${vars.space["4"]}`,
   borderBottom: `1px solid ${vars.color.border}`,
+  borderRadius: vars.radius.lg,
   "@media": {
     "(min-width: 640px)": {
-      margin: `-${vars.space["8"]} -${vars.space["6"]} ${vars.space["8"]} -${vars.space["6"]}`,
+      margin: `-${vars.space["8"]} -${vars.space["6"]} ${vars.space["12"]} -${vars.space["6"]}`,
       padding: `${vars.space["12"]} ${vars.space["6"]}`,
     },
   },
@@ -57,6 +58,7 @@ export const stationCard = style({
   borderRadius: vars.radius.md,
   padding: vars.space["4"],
   borderLeft: `4px solid ${vars.color.accent}`,
+  minWidth: 0,
   transition: "box-shadow 150ms ease, transform 150ms ease",
   ":hover": {
     boxShadow: "0 2px 8px rgba(26, 35, 50, 0.08)",
