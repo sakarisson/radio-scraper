@@ -17,34 +17,6 @@ function getSupabase() {
   return _supabase;
 }
 
-const PAGE_SIZE = 1000;
-
-/**
- * Fetches all rows from a Supabase query by paginating through results.
- * Supabase defaults to returning at most 1000 rows; this helper fetches
- * successive pages until all rows are retrieved.
- */
-async function fetchAllRows<T>(
-  buildQuery: () => { range: (from: number, to: number) => PromiseLike<{ data: any; error: any }> }
-): Promise<T[]> {
-  const allRows: T[] = [];
-  let offset = 0;
-
-  while (true) {
-    const { data, error } = await buildQuery().range(
-      offset,
-      offset + PAGE_SIZE - 1
-    );
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-    allRows.push(...(data as T[]));
-    if (data.length < PAGE_SIZE) break;
-    offset += PAGE_SIZE;
-  }
-
-  return allRows;
-}
-
 export async function getStats() {
   const [artists, songs, plays] = await Promise.all([
     getSupabase()
@@ -268,61 +240,36 @@ export async function getSongPlays(
 export async function getSongStationBreakdown(
   artistName: string,
   songTitle: string
-) {
+): Promise<{ station: string; playCount: number }[] | null> {
   const songId = await findSongId(artistName, songTitle);
   if (songId === null) return null;
 
-  const data = await fetchAllRows<any>(() =>
-    getSupabase()
-      .from("plays")
-      .select(
-        `
-        stations!inner ( slug )
-      `
-      )
-      .eq("song_id", songId)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-  );
+  const { data, error } = await getSupabase().rpc("song_station_breakdown", {
+    p_song_id: songId,
+  });
 
-  const counts: Record<string, number> = {};
-  for (const play of data) {
-    const slug = play.stations.slug;
-    counts[slug] = (counts[slug] ?? 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([station, playCount]) => ({ station, playCount }));
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    station: row.slug,
+    playCount: row.play_count,
+  }));
 }
 
-export async function getArtistStationBreakdown(artistName: string) {
+export async function getArtistStationBreakdown(
+  artistName: string
+): Promise<{ station: string; playCount: number }[] | null> {
   const artistId = await findArtistId(artistName);
   if (artistId === null) return null;
 
-  const data = await fetchAllRows<any>(() =>
-    getSupabase()
-      .from("plays")
-      .select(
-        `
-        stations!inner ( slug ),
-        songs!inner ( artist_id )
-      `
-      )
-      .eq("songs.artist_id", artistId)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-  );
+  const { data, error } = await getSupabase().rpc("artist_station_breakdown", {
+    p_artist_id: artistId,
+  });
 
-  const counts: Record<string, number> = {};
-  for (const play of data) {
-    const slug = play.stations.slug;
-    counts[slug] = (counts[slug] ?? 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([station, playCount]) => ({ station, playCount }));
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    station: row.slug,
+    playCount: row.play_count,
+  }));
 }
 
 export async function getArtistPlayCount(artistName: string) {
@@ -404,7 +351,7 @@ export async function getTopArtistsForMonth(
   month: number,
   limit: number = 10,
   stationSlugs?: string[]
-) {
+): Promise<{ name: string; playCount: number }[]> {
   const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
@@ -415,39 +362,18 @@ export async function getTopArtistsForMonth(
       ? await resolveStationIds(stationSlugs)
       : null;
 
-  const data = await fetchAllRows<any>(() => {
-    let q = getSupabase()
-      .from("plays")
-      .select(
-        `
-        songs!inner (
-          artists!inner ( name )
-        )
-      `
-      )
-      .gte("time_played", startOfMonth)
-      .lt("time_played", startOfNextMonth)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false);
-
-    if (stationIds) {
-      q = q.in("station_id", stationIds);
-    }
-    return q;
+  const { data, error } = await getSupabase().rpc("top_artists_for_month", {
+    start_date: startOfMonth,
+    end_date: startOfNextMonth,
+    result_limit: limit,
+    filter_station_ids: stationIds,
   });
 
-  if (data.length === 0) return [];
-
-  const counts: Record<string, number> = {};
-  for (const play of data) {
-    const name = play.songs.artists.name;
-    counts[name] = (counts[name] ?? 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([name, playCount]) => ({ name, playCount }));
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    name: row.name,
+    playCount: row.play_count,
+  }));
 }
 
 export async function getTopSongsForMonth(
@@ -455,7 +381,7 @@ export async function getTopSongsForMonth(
   month: number,
   limit: number = 10,
   stationSlugs?: string[]
-) {
+): Promise<{ title: string; artist: string; playCount: number }[]> {
   const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
@@ -466,45 +392,19 @@ export async function getTopSongsForMonth(
       ? await resolveStationIds(stationSlugs)
       : null;
 
-  const data = await fetchAllRows<any>(() => {
-    let q = getSupabase()
-      .from("plays")
-      .select(
-        `
-        songs!inner (
-          title,
-          artists!inner ( name )
-        )
-      `
-      )
-      .gte("time_played", startOfMonth)
-      .lt("time_played", startOfNextMonth)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false);
-
-    if (stationIds) {
-      q = q.in("station_id", stationIds);
-    }
-    return q;
+  const { data, error } = await getSupabase().rpc("top_songs_for_month", {
+    start_date: startOfMonth,
+    end_date: startOfNextMonth,
+    result_limit: limit,
+    filter_station_ids: stationIds,
   });
 
-  if (data.length === 0) return [];
-
-  const counts: Record<string, { title: string; artist: string; count: number }> = {};
-  for (const play of data) {
-    const title = play.songs.title;
-    const artist = play.songs.artists.name;
-    const key = `${title}:::${artist}`;
-    if (!counts[key]) {
-      counts[key] = { title, artist, count: 0 };
-    }
-    counts[key].count += 1;
-  }
-
-  return Object.values(counts)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit)
-    .map(({ title, artist, count }) => ({ title, artist, playCount: count }));
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    title: row.title,
+    artist: row.artist_name,
+    playCount: row.play_count,
+  }));
 }
 
 export async function getStations() {
@@ -626,7 +526,10 @@ export async function getStationPlays(
   }));
 }
 
-export async function getTopArtistsForStation(slug: string, limit: number = 10) {
+export async function getTopArtistsForStation(
+  slug: string,
+  limit: number = 10
+): Promise<{ name: string; playCount: number }[]> {
   const { data: station } = await getSupabase()
     .from("stations")
     .select("id")
@@ -635,55 +538,32 @@ export async function getTopArtistsForStation(slug: string, limit: number = 10) 
 
   if (!station) return [];
 
-  const data = await fetchAllRows<any>(() =>
-    getSupabase()
-      .from("plays")
-      .select(
-        `
-        songs!inner (
-          artists!inner ( name )
-        )
-      `
-      )
-      .eq("station_id", station.id)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-  );
+  const { data, error } = await getSupabase().rpc("top_artists_for_station", {
+    p_station_id: station.id,
+    result_limit: limit,
+  });
 
-  if (data.length === 0) return [];
-
-  const counts: Record<string, number> = {};
-  for (const play of data) {
-    const name = play.songs.artists.name;
-    counts[name] = (counts[name] ?? 0) + 1;
-  }
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([name, playCount]) => ({ name, playCount }));
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    name: row.name,
+    playCount: row.play_count,
+  }));
 }
 
-export async function getArtistPlayCounts(artistIds: number[]) {
+export async function getArtistPlayCounts(
+  artistIds: number[]
+): Promise<Record<number, number>> {
   if (artistIds.length === 0) return {};
 
-  const data = await fetchAllRows<any>(() =>
-    getSupabase()
-      .from("plays")
-      .select(
-        `
-        songs!inner ( artist_id )
-      `
-      )
-      .in("songs.artist_id", artistIds)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-  );
+  const { data, error } = await getSupabase().rpc("artist_play_counts", {
+    p_artist_ids: artistIds,
+  });
+
+  if (error) throw error;
 
   const counts: Record<number, number> = {};
-  for (const play of data) {
-    const artistId = play.songs.artist_id;
-    counts[artistId] = (counts[artistId] ?? 0) + 1;
+  for (const row of data ?? []) {
+    counts[row.artist_id] = row.play_count;
   }
 
   return counts;
