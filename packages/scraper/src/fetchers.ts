@@ -5,9 +5,10 @@ import { PlayingEvent, StationSlug } from './types';
 const ras2Url = process.env.STATION_URL_RAS_2;
 const kvfUrl = process.env.STATION_URL_KVF;
 const kvf2Url = process.env.STATION_URL_KVF2;
+const sjeyUrl = process.env.STATION_URL_SJEY;
 
-if (!ras2Url || !kvfUrl || !kvf2Url) {
-  throw new Error('Missing environment variables: STATION_URL_RAS_2, STATION_URL_KVF, STATION_URL_KVF2');
+if (!ras2Url || !kvfUrl || !kvf2Url || !sjeyUrl) {
+  throw new Error('Missing environment variables: STATION_URL_RAS_2, STATION_URL_KVF, STATION_URL_KVF2, STATION_URL_SJEY');
 }
 
 export const fetchers: Array<{
@@ -140,6 +141,30 @@ export const fetchers: Array<{
           evtSource.close();
         };
       });
+    },
+  },
+  {
+    slug: 'sjey',
+    fetchData: async () => {
+      const html = await fetch(sjeyUrl, {
+        headers: { Accept: 'text/html' },
+      }).then((response) => response.text());
+
+      const artistMatch = html.match(
+        /playing--current[\s\S]*?playing--artist[^>]*>\s*([^<]+)/
+      );
+      const titleMatch = html.match(
+        /playing--current[\s\S]*?playing--title[^>]*>\s*([^<]+)/
+      );
+
+      const artist = artistMatch?.[1]?.trim();
+      const title = titleMatch?.[1]?.trim();
+
+      if (!artist || !title) {
+        return null;
+      }
+
+      return { artist, title, rawData: html };
     },
   },
 ];

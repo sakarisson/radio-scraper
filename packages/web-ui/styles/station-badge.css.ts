@@ -18,6 +18,7 @@ const stationColors: Record<string, { bg: string; color: string }> = {
   kvf: { bg: "#edf3f7", color: "#3a6580" },
   ras2: { bg: "#f5f0ea", color: "#7a6548" },
   lindin: { bg: "#edf5ef", color: "#4a7a5a" },
+  sjey: { bg: "#f0edf5", color: "#5a4a7a" },
   default: { bg: vars.color.bgHover, color: vars.color.textSecondary },
 };
 
