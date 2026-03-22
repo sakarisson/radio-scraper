@@ -15,6 +15,7 @@ const stationCardAccent: Record<string, string> = {
   kvf: styles.stationCardKvf,
   ras2: styles.stationCardRas2,
   lindin: styles.stationCardLindin,
+  sjey: styles.stationCardSjey,
 };
 
 export default async function Home() {

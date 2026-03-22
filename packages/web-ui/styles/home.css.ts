@@ -78,6 +78,10 @@ export const stationCardLindin = style({
   borderLeftColor: "#5a8a6a",
 });
 
+export const stationCardSjey = style({
+  borderLeftColor: "#7a5a8a",
+});
+
 export const stationName = style({
   fontSize: vars.fontSize.xs,
   fontFamily: vars.font.body,
