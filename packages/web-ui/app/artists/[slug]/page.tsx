@@ -5,6 +5,7 @@ import {
   getArtistPlays,
   getArtistPlayCount,
   getArtistStationBreakdown,
+  getArtistSongsOverview,
 } from "@/utils/database";
 import format from "date-fns/format";
 import { heading } from "@/styles/typography.css";
@@ -33,11 +34,13 @@ export default async function ArtistPage({
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, stationBreakdown] = await Promise.all([
-    getArtistPlays(artistName, offset, PAGE_SIZE),
-    getArtistPlayCount(artistName),
-    getArtistStationBreakdown(artistName),
-  ]);
+  const [plays, totalCount, stationBreakdown, songsOverview] =
+    await Promise.all([
+      getArtistPlays(artistName, offset, PAGE_SIZE),
+      getArtistPlayCount(artistName),
+      getArtistStationBreakdown(artistName),
+      getArtistSongsOverview(artistName),
+    ]);
 
   if (plays === null || totalCount === null) {
     notFound();
@@ -73,6 +76,41 @@ export default async function ArtistPage({
           ))}
         </div>
       )}
+
+      {songsOverview && songsOverview.length > 0 && (
+        <div>
+          <h2 className={styles.sectionHeading}>
+            {strings.songs} ({songsOverview.length})
+          </h2>
+          <div className={styles.songsOverviewGrid}>
+            {songsOverview.map(
+              ({ songId, title, playCount, firstPlayed, lastPlayed }) => (
+                <Link
+                  key={songId}
+                  href={`/artists/${params.slug}/${encodeURIComponent(title)}`}
+                  className={styles.songCard}
+                >
+                  <div className={styles.songCardTitle}>{title}</div>
+                  <div className={styles.songCardStats}>
+                    <span className={styles.songCardPlayCount}>
+                      {playCount.toLocaleString("en-US")}{" "}
+                      {playCount === 1 ? strings.play : strings.playsLabel}
+                    </span>
+                    <span className={styles.songCardStat}>
+                      First played: {format(new Date(firstPlayed), "MMM d, yyyy")}
+                    </span>
+                    <span className={styles.songCardStat}>
+                      Last played: {format(new Date(lastPlayed), "MMM d, yyyy")}
+                    </span>
+                  </div>
+                </Link>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      <h2 className={styles.sectionHeading}>Recent plays</h2>
 
       <table className={styles.table}>
         <thead>

@@ -98,6 +98,60 @@ export const mobileCard = style({
   padding: vars.space["4"],
 });
 
+export const sectionHeading = style({
+  fontSize: vars.fontSize.lg,
+  fontFamily: vars.font.body,
+  fontWeight: 600,
+  color: vars.color.textPrimary,
+  marginBottom: vars.space["4"],
+});
+
+export const songsOverviewGrid = style({
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+  gap: vars.space["3"],
+  marginBottom: vars.space["8"],
+});
+
+export const songCard = style({
+  backgroundColor: vars.color.bgSurface,
+  border: `1px solid ${vars.color.border}`,
+  borderRadius: vars.radius.md,
+  padding: vars.space["4"],
+  textDecoration: "none",
+  transition: "border-color 150ms ease",
+  ":hover": {
+    borderColor: vars.color.accent,
+  },
+});
+
+export const songCardTitle = style({
+  fontSize: vars.fontSize.base,
+  fontFamily: vars.font.body,
+  fontWeight: 500,
+  color: vars.color.textPrimary,
+  marginBottom: vars.space["2"],
+});
+
+export const songCardStats = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: vars.space["1"],
+});
+
+export const songCardStat = style({
+  fontSize: vars.fontSize.sm,
+  fontFamily: vars.font.body,
+  color: vars.color.textSecondary,
+});
+
+export const songCardPlayCount = style({
+  fontSize: vars.fontSize.sm,
+  fontFamily: vars.font.body,
+  fontWeight: 600,
+  color: vars.color.accent,
+});
+
 export const songLink = style({
   color: vars.color.textPrimary,
   textDecoration: "none",
