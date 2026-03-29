@@ -98,6 +98,35 @@ export const mobileCard = style({
   padding: vars.space["4"],
 });
 
+export const sectionHeading = style({
+  fontSize: vars.fontSize.lg,
+  fontFamily: vars.font.body,
+  fontWeight: 600,
+  color: vars.color.textPrimary,
+  marginTop: vars.space["12"],
+  marginBottom: vars.space["4"],
+  selectors: {
+    "&:first-child": {
+      marginTop: 0,
+    },
+  },
+});
+
+export const thRight = style([
+  th,
+  {
+    textAlign: "right",
+  },
+]);
+
+export const tdRight = style([
+  td,
+  {
+    textAlign: "right",
+    fontVariantNumeric: "tabular-nums",
+  },
+]);
+
 export const songLink = style({
   color: vars.color.textPrimary,
   textDecoration: "none",

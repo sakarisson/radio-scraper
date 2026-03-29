@@ -272,6 +272,35 @@ export async function getArtistStationBreakdown(
   }));
 }
 
+export async function getArtistSongsOverview(
+  artistName: string
+): Promise<
+  | {
+      songId: number;
+      title: string;
+      playCount: number;
+      firstPlayed: string;
+      lastPlayed: string;
+    }[]
+  | null
+> {
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+
+  const { data, error } = await getSupabase().rpc("artist_songs_overview", {
+    p_artist_id: artistId,
+  });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    songId: row.song_id,
+    title: row.title,
+    playCount: row.play_count,
+    firstPlayed: row.first_played,
+    lastPlayed: row.last_played,
+  }));
+}
+
 export async function getArtistPlayCount(artistName: string) {
   const artistId = await findArtistId(artistName);
   if (artistId === null) return null;
