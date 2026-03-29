@@ -9,29 +9,48 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Query last play
-        id: query
+      - name: Check each station
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          LAST_PLAY=$(curl -sf \
+          STATIONS=$(curl -sf \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            "$SUPABASE_URL/rest/v1/plays?select=time_played&is_likely_not_music=eq.false&order=time_played.desc&limit=1" \
-            | jq -r '.[0].time_played')
-          echo "Last play: $LAST_PLAY"
-          echo "last_play=$LAST_PLAY" >> $GITHUB_OUTPUT
+            "$SUPABASE_URL/rest/v1/stations?select=id,slug" \
+            | jq -c '.[]')
 
-      - name: Check gap
-        run: |
-          LAST_TS=$(date -d "${{ steps.query.outputs.last_play }}" +%s)
           NOW=$(date +%s)
-          GAP=$(( NOW - LAST_TS ))
           THRESHOLD=$(( 6 * 3600 ))
-          GAP_HOURS=$(echo "scale=1; $GAP / 3600" | bc)
-          echo "Gap: ${GAP_HOURS}h (threshold: 6h)"
-          if [ "$GAP" -gt "$THRESHOLD" ]; then
-            echo "ALERT: No plays written in ${GAP_HOURS}h. Last play: ${{ steps.query.outputs.last_play }}"
+          FAILED=""
+
+          for ROW in $STATIONS; do
+            STATION_ID=$(echo "$ROW" | jq -r '.id')
+            SLUG=$(echo "$ROW" | jq -r '.slug')
+
+            LAST_PLAY=$(curl -sf \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              "$SUPABASE_URL/rest/v1/plays?select=time_played&station_id=eq.$STATION_ID&is_likely_not_music=eq.false&is_deleted=eq.false&order=time_played.desc&limit=1" \
+              | jq -r '.[0].time_played')
+
+            if [ "$LAST_PLAY" = "null" ] || [ -z "$LAST_PLAY" ]; then
+              echo "[$SLUG] No plays found"
+              FAILED="$FAILED $SLUG(no plays)"
+              continue
+            fi
+
+            LAST_TS=$(date -d "$LAST_PLAY" +%s)
+            GAP=$(( NOW - LAST_TS ))
+            GAP_HOURS=$(echo "scale=1; $GAP / 3600" | bc)
+            echo "[$SLUG] Last play: $LAST_PLAY (${GAP_HOURS}h ago)"
+
+            if [ "$GAP" -gt "$THRESHOLD" ]; then
+              FAILED="$FAILED $SLUG(${GAP_HOURS}h)"
+            fi
+          done
+
+          if [ -n "$FAILED" ]; then
+            echo "ALERT: Stations with no writes in 6h+:$FAILED"
             exit 1
           fi
