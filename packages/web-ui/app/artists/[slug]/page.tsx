@@ -8,6 +8,7 @@ import {
   getArtistSongsOverview,
 } from "@/utils/database";
 import format from "date-fns/format";
+import formatDistanceToNow from "date-fns/formatDistanceToNow";
 import { heading } from "@/styles/typography.css";
 import * as styles from "@/styles/artist-detail.css";
 import { strings } from "@/utils/strings";
@@ -82,30 +83,96 @@ export default async function ArtistPage({
           <h2 className={styles.sectionHeading}>
             {strings.songs} ({songsOverview.length})
           </h2>
-          <div className={styles.songsOverviewGrid}>
-            {songsOverview.map(
-              ({ songId, title, playCount, firstPlayed, lastPlayed }) => (
-                <Link
-                  key={songId}
-                  href={`/artists/${params.slug}/${encodeURIComponent(title)}`}
-                  className={styles.songCard}
-                >
-                  <div className={styles.songCardTitle}>{title}</div>
-                  <div className={styles.songCardStats}>
-                    <span className={styles.songCardPlayCount}>
-                      {playCount.toLocaleString("en-US")}{" "}
-                      {playCount === 1 ? strings.play : strings.playsLabel}
-                    </span>
-                    <span className={styles.songCardStat}>
-                      First played: {format(new Date(firstPlayed), "MMM d, yyyy")}
-                    </span>
-                    <span className={styles.songCardStat}>
-                      Last played: {format(new Date(lastPlayed), "MMM d, yyyy")}
-                    </span>
-                  </div>
-                </Link>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.th}>{strings.title}</th>
+                <th className={styles.thRight}>{strings.plays}</th>
+                <th className={styles.th}>First played</th>
+                <th className={styles.th}>Last played</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...songsOverview]
+                .sort(
+                  (a, b) =>
+                    new Date(b.lastPlayed).getTime() -
+                    new Date(a.lastPlayed).getTime()
+                )
+                .map(
+                  ({ songId, title, playCount, firstPlayed, lastPlayed }) => (
+                    <tr key={songId}>
+                      <td className={styles.td}>
+                        <Link
+                          href={`/artists/${params.slug}/${encodeURIComponent(title)}`}
+                          className={styles.songLink}
+                        >
+                          {title}
+                        </Link>
+                      </td>
+                      <td className={styles.tdRight}>
+                        {playCount.toLocaleString("en-US")}
+                      </td>
+                      <td
+                        className={styles.tdTime}
+                        title={format(
+                          new Date(firstPlayed),
+                          "MMM d, yyyy 'at' h:mm a"
+                        )}
+                      >
+                        {formatDistanceToNow(new Date(firstPlayed), {
+                          addSuffix: true,
+                        })}
+                      </td>
+                      <td
+                        className={styles.tdTime}
+                        title={format(
+                          new Date(lastPlayed),
+                          "MMM d, yyyy 'at' h:mm a"
+                        )}
+                      >
+                        {formatDistanceToNow(new Date(lastPlayed), {
+                          addSuffix: true,
+                        })}
+                      </td>
+                    </tr>
+                  )
+                )}
+            </tbody>
+          </table>
+
+          <div className={styles.mobileList}>
+            {[...songsOverview]
+              .sort(
+                (a, b) =>
+                  new Date(b.lastPlayed).getTime() -
+                  new Date(a.lastPlayed).getTime()
               )
-            )}
+              .map(
+                ({ songId, title, playCount, firstPlayed, lastPlayed }) => (
+                  <div key={songId} className={styles.mobileCard}>
+                    <Link
+                      href={`/artists/${params.slug}/${encodeURIComponent(title)}`}
+                      className={styles.mobileTitle}
+                    >
+                      {title}
+                    </Link>
+                    <div className={styles.mobileMeta}>
+                      <span>
+                        {playCount.toLocaleString("en-US")}{" "}
+                        {playCount === 1 ? strings.play : strings.playsLabel}
+                      </span>
+                      <span
+                        title={`${format(new Date(firstPlayed), "MMM d, yyyy")} – ${format(new Date(lastPlayed), "MMM d, yyyy")}`}
+                      >
+                        {formatDistanceToNow(new Date(lastPlayed), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                )
+              )}
           </div>
         </div>
       )}
