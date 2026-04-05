@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check each station
+        id: check
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -36,7 +37,7 @@ jobs:
 
             if [ "$LAST_PLAY" = "null" ] || [ -z "$LAST_PLAY" ]; then
               echo "[$SLUG] No plays found"
-              FAILED="$FAILED $SLUG(no plays)"
+              FAILED="$FAILED $SLUG(no-plays)"
               continue
             fi
 
@@ -51,6 +52,89 @@ jobs:
           done
 
           if [ -n "$FAILED" ]; then
+            FAILURE_KEY=$(echo "$FAILED" | tr ' ' '\n' | sort | tr '\n' '-' | sed 's/-$//')
+            echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+            echo "failure_key=$FAILURE_KEY" >> "$GITHUB_OUTPUT"
             echo "ALERT: Stations with no writes in 6h+:$FAILED"
             exit 1
           fi
+
+      - name: Check if already alerted
+        id: cache
+        if: failure()
+        uses: actions/cache@v4
+        with:
+          path: /tmp/alert-marker
+          key: alert-sent-${{ steps.check.outputs.failure_key }}
+
+      - name: Create marker and send alert
+        if: failure() && steps.cache.outputs.cache-hit != 'true'
+        env:
+          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+        run: |
+          mkdir -p /tmp/alert-marker
+          echo "${{ steps.check.outputs.failure_key }}" > /tmp/alert-marker/key.txt
+
+          if [ -z "$ALERT_EMAIL_PASSWORD" ]; then
+            echo "::warning::ALERT_EMAIL_PASSWORD secret not set — skipping email"
+            exit 0
+          fi
+        # Email is sent in the next step only if the secret is available
+
+      - name: Send alert email
+        if: failure() && steps.cache.outputs.cache-hit != 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "🚨 Radio scraper alert: stations with no writes"
+          to: kristian.sakarisson@gmail.com
+          from: Radio Scraper Alerts
+          body: |
+            The following stations have had no new plays in 6+ hours:
+
+            ${{ steps.check.outputs.failed }}
+
+            View the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Check for recovery
+        id: recovery
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          KEYS=$(gh cache list --repo "${{ github.repository }}" --key "alert-sent-" --json key --jq '.[].key' 2>/dev/null || true)
+          if [ -n "$KEYS" ]; then
+            echo "has_prior_alert=true" >> "$GITHUB_OUTPUT"
+            echo "Prior alert keys found: $KEYS"
+          else
+            echo "has_prior_alert=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send recovery email
+        if: success() && steps.recovery.outputs.has_prior_alert == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "✅ Radio scraper recovered: all stations writing again"
+          to: kristian.sakarisson@gmail.com
+          from: Radio Scraper Alerts
+          body: |
+            All stations are now writing plays again.
+
+            View the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Clear alert cache
+        if: success() && steps.recovery.outputs.has_prior_alert == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache list --repo "${{ github.repository }}" --key "alert-sent-" --json key --jq '.[].key' | while read -r KEY; do
+            echo "Deleting cache: $KEY"
+            gh cache delete "$KEY" --repo "${{ github.repository }}" || true
+          done
