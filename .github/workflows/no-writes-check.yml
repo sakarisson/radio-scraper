@@ -9,11 +9,27 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # Restore the set of stations that were failing on the previous run.
+      # Keys are unique per run; restore-keys prefix-matches the most recent.
+      - name: Restore alert state
+        uses: actions/cache/restore@v4
+        with:
+          path: .alert-state
+          key: alert-state-${{ github.run_id }}
+          restore-keys: |
+            alert-state-
+
       - name: Check each station
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          mkdir -p .alert-state
+          PREV_FILE=.alert-state/failing.txt
+          touch "$PREV_FILE"
+          # Snapshot the previous failing set before we overwrite it.
+          sort -u "$PREV_FILE" | sed '/^$/d' > prev.txt
+
           STATIONS=$(curl -sf \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
@@ -22,7 +38,7 @@ jobs:
 
           NOW=$(date +%s)
           THRESHOLD=$(( 6 * 3600 ))
-          FAILED=""
+          : > cur.txt
 
           for ROW in $STATIONS; do
             STATION_ID=$(echo "$ROW" | jq -r '.id')
@@ -36,7 +52,7 @@ jobs:
 
             if [ "$LAST_PLAY" = "null" ] || [ -z "$LAST_PLAY" ]; then
               echo "[$SLUG] No plays found"
-              FAILED="$FAILED $SLUG(no plays)"
+              echo "$SLUG" >> cur.txt
               continue
             fi
 
@@ -46,11 +62,41 @@ jobs:
             echo "[$SLUG] Last play: $LAST_PLAY (${GAP_HOURS}h ago)"
 
             if [ "$GAP" -gt "$THRESHOLD" ]; then
-              FAILED="$FAILED $SLUG(${GAP_HOURS}h)"
+              echo "$SLUG" >> cur.txt
             fi
           done
 
-          if [ -n "$FAILED" ]; then
-            echo "ALERT: Stations with no writes in 6h+:$FAILED"
+          # Persist the current failing set for the next run to diff against.
+          sort -u cur.txt | sed '/^$/d' > cur.sorted
+          mv cur.sorted "$PREV_FILE"
+
+          # Transitions: in current-but-not-previous = newly down;
+          #              in previous-but-not-current = recovered.
+          NEWLY_DOWN=$(comm -23 "$PREV_FILE" prev.txt)
+          NEWLY_UP=$(comm -13 "$PREV_FILE" prev.txt)
+
+          if [ -n "$NEWLY_DOWN" ]; then
+            echo "DOWN — no music writes in 6h+:"
+            echo "$NEWLY_DOWN" | sed 's/^/  - /'
+          fi
+          if [ -n "$NEWLY_UP" ]; then
+            echo "RECOVERED — writing again:"
+            echo "$NEWLY_UP" | sed 's/^/  - /'
+          fi
+
+          # Only fail (→ GitHub sends one email) when state actually changes.
+          if [ -n "$NEWLY_DOWN" ] || [ -n "$NEWLY_UP" ]; then
+            echo "State changed — failing this run to trigger a notification email."
             exit 1
           fi
+
+          echo "No state change — staying quiet."
+
+      # Always save, even when the check step failed, so the next run sees
+      # the updated state and doesn't re-alert for an unchanged station.
+      - name: Save alert state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .alert-state
+          key: alert-state-${{ github.run_id }}
