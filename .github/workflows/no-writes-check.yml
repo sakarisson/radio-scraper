@@ -23,7 +23,8 @@ jobs:
 
           NOW=$(date +%s)
           THRESHOLD=$(( 6 * 3600 ))
-          FAILED=""
+          FAILED=""        # human-readable detail, used in the email body
+          FAILED_SLUGS=""  # slugs only, used to build a stable dedup key
 
           for ROW in $STATIONS; do
             STATION_ID=$(echo "$ROW" | jq -r '.id')
@@ -38,6 +39,7 @@ jobs:
             if [ "$LAST_PLAY" = "null" ] || [ -z "$LAST_PLAY" ]; then
               echo "[$SLUG] No plays found"
               FAILED="$FAILED $SLUG(no-plays)"
+              FAILED_SLUGS="$FAILED_SLUGS $SLUG"
               continue
             fi
 
@@ -48,38 +50,36 @@ jobs:
 
             if [ "$GAP" -gt "$THRESHOLD" ]; then
               FAILED="$FAILED $SLUG(${GAP_HOURS}h)"
+              FAILED_SLUGS="$FAILED_SLUGS $SLUG"
             fi
           done
 
           if [ -n "$FAILED" ]; then
-            FAILURE_KEY=$(echo "$FAILED" | tr ' ' '\n' | sort | tr '\n' '-' | sed 's/-$//')
+            # Key depends only on WHICH stations are failing, not for how long,
+            # so it stays constant for the duration of one incident.
+            FAILURE_KEY=$(echo "$FAILED_SLUGS" | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' '-' | sed 's/-$//')
             echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
             echo "failure_key=$FAILURE_KEY" >> "$GITHUB_OUTPUT"
             echo "ALERT: Stations with no writes in 6h+:$FAILED"
             exit 1
           fi
 
+      # Restore-only: look up whether we've already alerted for this exact
+      # set of failing stations. (The combined cache action won't save on a
+      # failing job, so we restore and save as separate steps.)
       - name: Check if already alerted
         id: cache
         if: failure()
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/alert-marker
           key: alert-sent-${{ steps.check.outputs.failure_key }}
 
-      - name: Create marker and send alert
+      - name: Create marker
         if: failure() && steps.cache.outputs.cache-hit != 'true'
-        env:
-          ALERT_EMAIL_PASSWORD: ${{ secrets.ALERT_EMAIL_PASSWORD }}
         run: |
           mkdir -p /tmp/alert-marker
           echo "${{ steps.check.outputs.failure_key }}" > /tmp/alert-marker/key.txt
-
-          if [ -z "$ALERT_EMAIL_PASSWORD" ]; then
-            echo "::warning::ALERT_EMAIL_PASSWORD secret not set — skipping email"
-            exit 0
-          fi
-        # Email is sent in the next step only if the secret is available
 
       - name: Send alert email
         if: failure() && steps.cache.outputs.cache-hit != 'true'
@@ -99,13 +99,22 @@ jobs:
 
             View the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+      # Save the marker even though the job is failing, so the next hourly run
+      # sees the cache hit and stays quiet for the rest of this incident.
+      - name: Mark as alerted
+        if: failure() && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/alert-marker
+          key: alert-sent-${{ steps.check.outputs.failure_key }}
+
       - name: Check for recovery
         id: recovery
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          KEYS=$(gh cache list --repo "${{ github.repository }}" --key "alert-sent-" --json key --jq '.[].key' 2>/dev/null || true)
+          KEYS=$(gh cache list --repo "${{ github.repository }}" --json key --jq '.[].key' 2>/dev/null | grep '^alert-sent-' || true)
           if [ -n "$KEYS" ]; then
             echo "has_prior_alert=true" >> "$GITHUB_OUTPUT"
             echo "Prior alert keys found: $KEYS"
@@ -134,7 +143,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh cache list --repo "${{ github.repository }}" --key "alert-sent-" --json key --jq '.[].key' | while read -r KEY; do
+          gh cache list --repo "${{ github.repository }}" --json key --jq '.[].key' | grep '^alert-sent-' | while read -r KEY; do
             echo "Deleting cache: $KEY"
             gh cache delete "$KEY" --repo "${{ github.repository }}" || true
           done
