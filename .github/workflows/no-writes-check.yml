@@ -5,6 +5,13 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch:
 
+# actions: write is required for `gh cache delete` to clear alert markers on
+# recovery. Without it the deletes 403, markers linger, and every successful
+# run re-sends a "recovered" email.
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
