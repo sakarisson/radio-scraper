@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600&display=swap');
 
 *,
 *::before,
@@ -21,9 +21,6 @@ body {
 }
 
 body {
-  background-color: var(--bgPage);
-  color: var(--textPrimary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -57,12 +54,6 @@ h4,
 h5,
 h6 {
   overflow-wrap: break-word;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
 }
 
 :focus:not(:focus-visible) {

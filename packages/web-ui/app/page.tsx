@@ -1,123 +1,154 @@
 import Link from "next/link";
-import { getStats, getRecentPlays, getLatestPlayPerStation } from "@/utils/database";
+import {
+  getStats,
+  getRecentPlays,
+  getLatestPlayPerStation,
+  getTopSongsForMonth,
+} from "@/utils/database";
 import * as styles from "@/styles/home.css";
-import { StationBadge } from "./components/StationBadge";
-import { link } from "@/styles/typography.css";
+import * as ui from "@/styles/ui.css";
+import { Stats } from "./components/Stats";
+import { StationDot, StationLink } from "./components/Station";
 import { strings } from "@/utils/strings";
-import format from "date-fns/format";
-import formatDistanceToNow from "date-fns/formatDistanceToNow";
-
-function formatNumber(n: number) {
-  return n.toLocaleString("en-US");
-}
-
-const stationCardAccent: Record<string, string> = {
-  kvf: styles.stationCardKvf,
-  ras2: styles.stationCardRas2,
-  lindin: styles.stationCardLindin,
-  sjey: styles.stationCardSjey,
-};
+import { clockTime, formatNumber, timeAgo } from "@/utils/format";
+import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
+import { compareStations, isStale } from "@/utils/stations";
 
 export default async function Home() {
-  const [stats, recentPlays, latestPerStation] = await Promise.all([
+  const chartMonth = getLastCompletedMonth();
+  const [stats, recentPlays, latestPerStation, topSongs] = await Promise.all([
     getStats(),
     getRecentPlays(5),
     getLatestPlayPerStation(),
+    getTopSongsForMonth(chartMonth.year, chartMonth.month, 5),
   ]);
 
+  const stations = [...latestPerStation].sort((a, b) =>
+    compareStations(a.station, b.station)
+  );
+
   return (
-    <div>
-      <div className={styles.hero}>
-        <h1 className={styles.heroTitle}>{strings.siteName}</h1>
-        <p className={styles.subtitle}>{strings.homeSubtitle}</p>
-      </div>
+    <>
+      <section className={styles.hero}>
+        <h1 className={styles.heroTitle}>{strings.homeTitle}</h1>
+        <Stats
+          items={[
+            { value: formatNumber(stats.artistCount), label: strings.artists },
+            { value: formatNumber(stats.songCount), label: strings.songs },
+            { value: formatNumber(stats.playCount), label: strings.plays },
+          ]}
+        />
+      </section>
 
-      <h2 className={styles.sectionHeading}>{strings.lastPlayed}</h2>
-      <div className={styles.stationCards}>
-        {latestPerStation.map((play) => (
-          <div
-            key={play.station}
-            className={`${styles.stationCard} ${stationCardAccent[play.station] ?? ""}`}
-          >
-            <div className={styles.stationName}>{play.station}</div>
-            <Link
-              href={`/artists/${play.artist}/${encodeURIComponent(play.title)}`}
-              className={styles.stationSong}
-            >
-              {play.title}
-            </Link>
-            <Link
-              href={`/artists/${play.artist}`}
-              className={styles.stationArtist}
-            >
-              {play.artist}
-            </Link>
-            <div className={styles.stationTime}>
-              {formatDistanceToNow(new Date(play.time_played), {
-                addSuffix: true,
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <div className={styles.statValue}>
-            {formatNumber(stats.artistCount)}
-          </div>
-          <div className={styles.statLabel}>{strings.artists}</div>
+      <section>
+        <div className={ui.sectionHeader} style={{ paddingBottom: 24 }}>
+          <h2 className={ui.sectionTitle}>{strings.lastPlayed}</h2>
+          <span className={ui.aside}>{strings.lastPlayedHint}</span>
         </div>
-        <div className={styles.statCard}>
-          <div className={styles.statValue}>
-            {formatNumber(stats.songCount)}
-          </div>
-          <div className={styles.statLabel}>{strings.songs}</div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.statValue}>
-            {formatNumber(stats.playCount)}
-          </div>
-          <div className={styles.statLabel}>{strings.plays}</div>
-        </div>
-      </div>
-
-      <h2 className={styles.sectionHeading}>{strings.recentPlays}</h2>
-      <div className={styles.recentList}>
-        {recentPlays.map((play) => (
-          <div key={play.id} className={styles.recentItem}>
-            <div className={styles.recentInfo}>
+        <div className={styles.stationCards}>
+          {stations.map((play) => {
+            return (
               <Link
-                href={`/artists/${play.artist}/${encodeURIComponent(play.title)}`}
-                className={styles.recentTitle}
+                key={play.station}
+                href={`/stations/${play.station}`}
+                className={[
+                  styles.stationCard,
+                  ui.softCard,
+                  ui.blockLink,
+                  isStale(play.time_played) ? styles.stale : "",
+                ].join(" ")}
               >
-                {play.title}
+                <div className={styles.stationCardHeader}>
+                  <StationDot station={play.station} size="sm" />
+                  <span>{play.station}</span>
+                  <span className={styles.stationCardAgo}>
+                    {timeAgo(play.time_played)}
+                  </span>
+                </div>
+                <div className={styles.stationCardBody}>
+                  <div className={styles.stationCardSong}>{play.title}</div>
+                  <div className={ui.itemSub}>{play.artist}</div>
+                </div>
               </Link>
-              <span className={styles.recentMeta}>
-                <Link href={`/artists/${play.artist}`} className={link}>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.columns}>
+        <div>
+          <div className={ui.sectionHeader}>
+            <h2 className={ui.sectionTitle}>{strings.recentPlays}</h2>
+            <Link href="/artists" className={ui.aside}>
+              {strings.browseAllArtists}
+            </Link>
+          </div>
+          {recentPlays.map((play) => (
+            <div key={play.id} className={`${styles.recentRow} ${ui.row}`}>
+              <span className={styles.rowMeta}>
+                {clockTime(play.time_played)}
+              </span>
+              <div className={ui.itemText}>
+                <Link
+                  href={`/artists/${encodeURIComponent(play.artist)}/${encodeURIComponent(play.title)}`}
+                  className={ui.itemTitle}
+                >
+                  {play.title}
+                </Link>
+                <Link
+                  href={`/artists/${encodeURIComponent(play.artist)}`}
+                  className={ui.itemSub}
+                >
                   {play.artist}
                 </Link>
+              </div>
+              <span className={styles.rowStation}>
+                <StationLink station={play.station} />
               </span>
             </div>
-            <div className={styles.recentRight}>
-              <StationBadge station={play.station} />
-              <span className={styles.recentTime}>
-                {format(new Date(play.time_played), "MMM d, HH:mm")}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className={styles.ctaRow}>
-        <Link href="/artists" className={styles.ctaLink}>
-          {strings.browseAllArtists}
-        </Link>
-        <Link href="/charts" className={styles.ctaLink}>
-          {strings.viewCharts}
-        </Link>
-      </div>
-    </div>
+        <div>
+          <div className={ui.sectionHeader}>
+            <h2 className={ui.sectionTitle}>
+              {strings.topSongsOfMonth(MONTH_NAMES[chartMonth.month - 1])}
+            </h2>
+            <Link href="/charts" className={ui.aside}>
+              {strings.monthlyCharts}
+            </Link>
+          </div>
+          {topSongs.length === 0 && (
+            <p className={ui.emptyState}>{strings.noDataForMonth}</p>
+          )}
+          {topSongs.map((song, i) => (
+            <div
+              key={`${song.title}-${song.artist}`}
+              className={`${styles.rankRow} ${ui.row}`}
+            >
+              <span className={styles.rowMeta}>{i + 1}</span>
+              <div className={ui.itemText}>
+                <Link
+                  href={`/artists/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.title)}`}
+                  className={ui.itemTitle}
+                >
+                  {song.title}
+                </Link>
+                <Link
+                  href={`/artists/${encodeURIComponent(song.artist)}`}
+                  className={ui.itemSub}
+                >
+                  {song.artist}
+                </Link>
+              </div>
+              <span className={styles.rowMeta}>
+                {formatNumber(song.playCount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
 
