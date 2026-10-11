@@ -4,14 +4,19 @@ import { notFound } from "next/navigation";
 import {
   getSongPlays,
   getSongPlayCount,
+  getSongPlayRange,
   getSongStationBreakdown,
 } from "@/utils/database";
 import format from "date-fns/format";
-import { heading } from "@/styles/typography.css";
 import * as styles from "@/styles/artist-detail.css";
+import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { StationBadge } from "@/app/components/StationBadge";
-import { Pagination } from "../../components/Pagination";
+import { clockTime, formatNumber, relativeTime } from "@/utils/format";
+import { Breadcrumbs } from "@/app/components/Breadcrumbs";
+import { Pagination } from "@/app/components/Pagination";
+import { StationLink } from "@/app/components/Station";
+import { StationSplit } from "@/app/components/StationSplit";
+import { Stats } from "@/app/components/Stats";
 
 const PAGE_SIZE = 50;
 
@@ -20,6 +25,23 @@ const paramsSchema = z
     page: z.string().regex(/^\d+$/).transform(Number).optional(),
   })
   .optional();
+
+type Play = { id: number; time_played: string; station: string };
+
+function groupByMonth(plays: Play[]) {
+  const groups: { key: string; label: string; plays: Play[] }[] = [];
+  for (const play of plays) {
+    const date = new Date(play.time_played);
+    const key = format(date, "yyyy-MM");
+    let group = groups[groups.length - 1];
+    if (!group || group.key !== key) {
+      group = { key, label: format(date, "MMMM yyyy"), plays: [] };
+      groups.push(group);
+    }
+    group.plays.push(play);
+  }
+  return groups;
+}
 
 export default async function SongPage({
   params,
@@ -34,9 +56,10 @@ export default async function SongPage({
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, stationBreakdown] = await Promise.all([
+  const [plays, totalCount, playRange, stationBreakdown] = await Promise.all([
     getSongPlays(artistName, songTitle, offset, PAGE_SIZE),
     getSongPlayCount(artistName, songTitle),
+    getSongPlayRange(artistName, songTitle),
     getSongStationBreakdown(artistName, songTitle),
   ]);
 
@@ -45,72 +68,93 @@ export default async function SongPage({
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-
-  function formatDate(dateStr: string) {
-    return format(new Date(dateStr), "MMM d, yyyy 'at' h:mm a");
-  }
+  const artistHref = `/artists/${params.slug}`;
+  const months = groupByMonth(plays);
 
   return (
-    <div>
-      <Link href={`/artists/${params.slug}`} className={styles.backLink}>
-        {strings.backToArtist(artistName)}
-      </Link>
+    <>
+      <Breadcrumbs
+        items={[
+          { href: "/artists", label: strings.artists },
+          { href: artistHref, label: artistName },
+        ]}
+      />
 
-      <div className={styles.headerRow}>
-        <h1 className={heading}>{songTitle}</h1>
-        <span className={styles.playCount}>
-          {totalCount.toLocaleString("en-US")}{" "}
-          {totalCount === 1 ? strings.play : strings.playsLabel}
-        </span>
-      </div>
+      <section className={ui.intro.detail}>
+        <h1 className={ui.display.lg}>{songTitle}</h1>
+        <Link href={artistHref} className={styles.subtitle}>
+          {artistName}
+        </Link>
+        <div className={ui.introStats}>
+          <Stats
+            items={[
+              { value: formatNumber(totalCount), label: strings.plays },
+              ...(playRange
+                ? [
+                    {
+                      value: relativeTime(playRange.firstPlayed),
+                      label: strings.firstPlayed,
+                    },
+                    {
+                      value: relativeTime(playRange.lastPlayed),
+                      label: strings.lastPlayed,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </div>
+      </section>
 
       {stationBreakdown && stationBreakdown.length > 0 && (
-        <div className={styles.stationBreakdown}>
-          {stationBreakdown.map(({ station, playCount }) => (
-            <div key={station} className={styles.stationBreakdownItem}>
-              <StationBadge station={station} />
-              <span className={styles.playCount}>{playCount}</span>
+        <section className={ui.section.sm}>
+          <div className={ui.sectionHeader}>
+            <h2 className={ui.sectionTitle}>{strings.playsByStation}</h2>
+          </div>
+          <StationSplit breakdown={stationBreakdown} />
+        </section>
+      )}
+
+      <section className={ui.section.lg}>
+        <h2 className={ui.sectionTitle}>{strings.playHistory}</h2>
+        <div className={styles.history}>
+          {months.map((month) => (
+            <div key={month.key} className={styles.historyMonth}>
+              <div className={styles.historyLabel}>
+                <span className={styles.historyMonthName}>{month.label}</span>
+                <span className={ui.aside}>
+                  {formatNumber(month.plays.length)}{" "}
+                  {month.plays.length === 1 ? strings.play : strings.playsLabel}
+                </span>
+              </div>
+              <div className={styles.historyPlays}>
+                {month.plays.map((play) => (
+                  <div
+                    key={play.id}
+                    className={`${styles.historyPlay} ${ui.row}`}
+                  >
+                    <span className={styles.historyDay}>
+                      {format(new Date(play.time_played), "MMM d")}
+                    </span>
+                    <span className={styles.historyTime}>
+                      {clockTime(play.time_played)}
+                    </span>
+                    <StationLink station={play.station} />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
-      )}
-
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th className={styles.th}>{strings.station}</th>
-            <th className={styles.th}>{strings.timePlayed}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {plays.map(({ time_played, station, id }) => (
-            <tr key={id}>
-              <td className={styles.td}>
-                <StationBadge station={station} />
-              </td>
-              <td className={styles.tdTime}>{formatDate(time_played)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className={styles.mobileList}>
-        {plays.map(({ time_played, station, id }) => (
-          <div key={id} className={styles.mobileCard}>
-            <div className={styles.mobileMeta}>
-              <StationBadge station={station} />
-              <span>{formatDate(time_played)}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        basePath={`/artists/${params.slug}/${params.song}`}
-      />
-    </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          basePath={`${artistHref}/${params.song}`}
+          prevLabel={strings.newerPlays}
+          nextLabel={strings.olderPlays}
+        />
+      </section>
+    </>
   );
 }
 

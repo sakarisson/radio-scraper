@@ -2,10 +2,13 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { z } from "zod";
 import { getAllStationSlugs } from "@/utils/database";
-import { heading } from "@/styles/typography.css";
 import * as styles from "@/styles/charts.css";
+import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
 import format from "date-fns/format";
+import { getLastCompletedMonth } from "@/utils/months";
+import { StationDot } from "../components/Station";
+import { vars } from "@/styles/theme.css";
 import { ChartResults } from "./ChartResults";
 import { ChartResultsSkeleton } from "./ChartResultsSkeleton";
 
@@ -18,15 +21,6 @@ const paramsSchema = z
     stations: z.string().optional(),
   })
   .optional();
-
-function getLastCompletedMonth() {
-  const now = new Date();
-  const month = now.getMonth(); // 0-indexed, so this is already "previous month"
-  if (month === 0) {
-    return { year: now.getFullYear() - 1, month: 12 };
-  }
-  return { year: now.getFullYear(), month };
-}
 
 function parseMonth(param: string | undefined) {
   if (!param) {
@@ -81,92 +75,101 @@ export default async function ChartsPage({
   const prev = getPrevMonth(year, month);
   const next = getNextMonth(year, month);
   const lastCompleted = getLastCompletedMonth();
-  const isLastCompleted =
-    year === lastCompleted.year && month === lastCompleted.month;
   const isFutureNext =
     next.year > lastCompleted.year ||
     (next.year === lastCompleted.year && next.month > lastCompleted.month);
 
-  const monthDate = new Date(year, month - 1);
-  const monthDisplay = format(monthDate, "MMMM yyyy");
+  const monthDisplay = format(new Date(year, month - 1), "MMMM yyyy");
 
-  const currentStationsParam = selectedSlugs
+  const currentStationsParam = selectedSlugs?.length
     ? selectedSlugs.join(",")
     : undefined;
 
   const suspenseKey = `${year}-${month}-${currentStationsParam ?? "all"}`;
 
   return (
-    <div>
-      <h1 className={heading}>{strings.charts}</h1>
-
-      <div className={styles.monthPicker}>
-        <Link
-          href={buildChartsHref(prev.year, prev.month, currentStationsParam)}
-          className={styles.monthNav}
-        >
-          &#8249;
-        </Link>
-        <span
-          className={`${styles.monthLabel} ${isLastCompleted ? styles.currentMonth : ""}`}
-        >
-          {monthDisplay}
-        </span>
-        {isFutureNext ? (
-          <span className={styles.monthNavDisabled}>&#8250;</span>
-        ) : (
-          <Link
-            href={buildChartsHref(
-              next.year,
-              next.month,
-              currentStationsParam
-            )}
-            className={styles.monthNav}
-          >
-            &#8250;
-          </Link>
-        )}
-      </div>
-
-      <div className={styles.stationFilter}>
-        <span className={styles.filterLabel}>{strings.filterByStation}</span>
-        <Link
-          href={buildChartsHref(year, month, undefined)}
-          className={`${styles.filterChip} ${!selectedSlugs ? styles.filterChipActive : ""}`}
-        >
-          {strings.allStationsLabel}
-        </Link>
-        {allSlugs.map((slug) => {
-          const isActive = selectedSlugs?.includes(slug) ?? false;
-          let nextSlugs: string | undefined;
-          if (isActive) {
-            const remaining = selectedSlugs!.filter((s) => s !== slug);
-            nextSlugs = remaining.length > 0 ? remaining.join(",") : undefined;
-          } else {
-            nextSlugs = selectedSlugs
-              ? [...selectedSlugs, slug].join(",")
-              : slug;
-          }
-          return (
+    <>
+      <section className={`${ui.intro.page} ${styles.header}`}>
+        <div>
+          <span className={ui.eyebrow}>{strings.charts}</span>
+          <div className={styles.monthPicker}>
             <Link
-              key={slug}
-              href={buildChartsHref(year, month, nextSlugs)}
-              className={`${styles.filterChip} ${isActive ? styles.filterChipActive : ""}`}
+              href={buildChartsHref(prev.year, prev.month, currentStationsParam)}
+              className={styles.monthNav.enabled}
+              aria-label={strings.previousMonth}
             >
-              {slug}
+              &#8249;
             </Link>
-          );
-        })}
-      </div>
+            <h1 className={ui.display.md}>{monthDisplay}</h1>
+            {isFutureNext ? (
+              <span className={styles.monthNav.disabled} aria-hidden>
+                &#8250;
+              </span>
+            ) : (
+              <Link
+                href={buildChartsHref(
+                  next.year,
+                  next.month,
+                  currentStationsParam
+                )}
+                className={styles.monthNav.enabled}
+                aria-label={strings.nextMonth}
+              >
+                &#8250;
+              </Link>
+            )}
+          </div>
+        </div>
 
-      <Suspense key={suspenseKey} fallback={<ChartResultsSkeleton />}>
-        <ChartResults
-          year={year}
-          month={month}
-          selectedSlugs={selectedSlugs}
-        />
-      </Suspense>
-    </div>
+        <div className={styles.filters}>
+          <Link
+            href={buildChartsHref(year, month, undefined)}
+            className={styles.filter[!currentStationsParam ? "active" : "idle"]}
+            scroll={false}
+          >
+            <span
+              className={ui.dot.sm}
+              style={{ background: vars.color.ink }}
+            />
+            {strings.allStations}
+          </Link>
+          {allSlugs.map((slug) => {
+            const isActive = selectedSlugs?.includes(slug) ?? false;
+            let nextSlugs: string | undefined;
+            if (isActive) {
+              const remaining = selectedSlugs!.filter((s) => s !== slug);
+              nextSlugs =
+                remaining.length > 0 ? remaining.join(",") : undefined;
+            } else {
+              nextSlugs = selectedSlugs?.length
+                ? [...selectedSlugs, slug].join(",")
+                : slug;
+            }
+            return (
+              <Link
+                key={slug}
+                href={buildChartsHref(year, month, nextSlugs)}
+                className={styles.filter[isActive ? "active" : "idle"]}
+                scroll={false}
+              >
+                <StationDot station={slug} size="sm" />
+                {slug}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={ui.section.md}>
+        <Suspense key={suspenseKey} fallback={<ChartResultsSkeleton />}>
+          <ChartResults
+            year={year}
+            month={month}
+            selectedSlugs={selectedSlugs}
+          />
+        </Suspense>
+      </section>
+    </>
   );
 }
 

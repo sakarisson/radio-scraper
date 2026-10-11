@@ -4,13 +4,17 @@ import { notFound } from "next/navigation";
 import {
   getStationPlays,
   getStationPlayCount,
-  getTopArtistsForStation,
+  getTotalPlayCount,
 } from "@/utils/database";
-import format from "date-fns/format";
-import { heading } from "@/styles/typography.css";
-import * as styles from "@/styles/station-detail.css";
+import * as styles from "@/styles/stations.css";
+import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { Pagination } from "@/app/artists/components/Pagination";
+import { formatNumber, formatShare, playTime, timeAgo } from "@/utils/format";
+import { Breadcrumbs } from "@/app/components/Breadcrumbs";
+import { Pagination } from "@/app/components/Pagination";
+import { StationDot } from "@/app/components/Station";
+import { Stats } from "@/app/components/Stats";
+import { isStale } from "@/utils/stations";
 
 const PAGE_SIZE = 50;
 
@@ -32,10 +36,11 @@ export default async function StationDetailPage({
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, topArtists] = await Promise.all([
+  const [plays, totalCount, allPlaysCount, latest] = await Promise.all([
     getStationPlays(slug, offset, PAGE_SIZE),
     getStationPlayCount(slug),
-    getTopArtistsForStation(slug),
+    getTotalPlayCount(),
+    page === 0 ? null : getStationPlays(slug, 0, 1),
   ]);
 
   if (plays === null || totalCount === null) {
@@ -43,81 +48,90 @@ export default async function StationDetailPage({
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const latestPlay = page === 0 ? plays[0] : latest?.[0];
+
+  const songHref = (artist: string, title: string) =>
+    `/artists/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
+  const artistHref = (artist: string) =>
+    `/artists/${encodeURIComponent(artist)}`;
 
   return (
-    <div>
-      <Link href="/stations" className={styles.backLink}>
-        {strings.allStations}
-      </Link>
+    <>
+      <Breadcrumbs items={[{ href: "/stations", label: strings.stationsTitle }]} />
 
-      <div className={styles.headerRow}>
-        <h1 className={heading} style={{ textTransform: "uppercase" }}>
-          {slug}
-        </h1>
-        <span className={styles.playCount}>
-          {totalCount.toLocaleString("en-US")} {strings.playsLabel}
-        </span>
-      </div>
-
-      <div className={styles.columns}>
-        <div>
-          <h2 className={styles.sectionHeading}>{strings.recentPlays}</h2>
-          <div className={styles.playList}>
-            {plays.map((play) => (
-              <div key={play.id} className={styles.playItem}>
-                <div className={styles.playInfo}>
-                  <Link
-                    href={`/artists/${play.artist}/${encodeURIComponent(play.title)}`}
-                    className={styles.playTitle}
-                  >
-                    {play.title}
-                  </Link>
-                  <Link
-                    href={`/artists/${play.artist}`}
-                    className={styles.playArtist}
-                  >
-                    {play.artist}
-                  </Link>
-                </div>
-                <span className={styles.playTime}>
-                  {format(new Date(play.time_played), "MMM d, HH:mm")}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            basePath={`/stations/${slug}`}
+      <section className={ui.intro.detail}>
+        <div className={styles.titleRow}>
+          <StationDot station={slug} size="lg" />
+          <h1 className={ui.display.lg}>{slug}</h1>
+        </div>
+        <div className={ui.introStats}>
+          <Stats
+            items={[
+              { value: formatNumber(totalCount), label: strings.plays },
+              {
+                value: formatShare(totalCount, allPlaysCount),
+                label: strings.ofAllPlays,
+              },
+            ]}
           />
         </div>
+      </section>
 
-        {topArtists.length > 0 && (
-          <div>
-            <h2 className={styles.sectionHeading}>
-              {strings.topArtistsForStation}
-            </h2>
-            <div className={styles.topArtistList}>
-              {topArtists.map((artist, i) => (
-                <div key={artist.name} className={styles.topArtistItem}>
-                  <span className={styles.topArtistRank}>{i + 1}</span>
-                  <Link
-                    href={`/artists/${artist.name}`}
-                    className={styles.topArtistName}
-                  >
-                    {artist.name}
-                  </Link>
-                  <span className={styles.topArtistCount}>
-                    {artist.playCount}
-                  </span>
-                </div>
-              ))}
+      {latestPlay && (
+        <section className={ui.section.sm}>
+          <div
+            className={`${styles.latestCard} ${ui.softCard} ${isStale(latestPlay.time_played) ? styles.stale : ""}`}
+          >
+            <span className={ui.aside}>
+              {strings.lastPlayedCard(timeAgo(latestPlay.time_played))}
+            </span>
+            <div className={ui.itemText} style={{ gap: 6 }}>
+              <Link
+                href={songHref(latestPlay.artist, latestPlay.title)}
+                className={styles.latestSong}
+              >
+                {latestPlay.title}
+              </Link>
+              <Link
+                href={artistHref(latestPlay.artist)}
+                className={styles.latestArtist}
+              >
+                {latestPlay.artist}
+              </Link>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </section>
+      )}
+
+      <section className={ui.section.lg}>
+        <div className={ui.sectionHeader}>
+          <h2 className={ui.sectionTitle}>{strings.recentPlaysOn(slug)}</h2>
+        </div>
+        {plays.map((play) => (
+          <div key={play.id} className={`${styles.playRow} ${ui.row}`}>
+            <span className={ui.aside}>{playTime(play.time_played)}</span>
+            <div className={ui.itemText}>
+              <Link
+                href={songHref(play.artist, play.title)}
+                className={ui.itemTitle}
+              >
+                {play.title}
+              </Link>
+              <Link href={artistHref(play.artist)} className={ui.itemSub}>
+                {play.artist}
+              </Link>
+            </div>
+          </div>
+        ))}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          basePath={`/stations/${params.slug}`}
+          prevLabel={strings.newerPlays}
+          nextLabel={strings.olderPlays}
+        />
+      </section>
+    </>
   );
 }
 

@@ -17,25 +17,32 @@ function getSupabase() {
   return _supabase;
 }
 
+export async function getTotalPlayCount() {
+  const { count, error } = await getSupabase()
+    .from("plays")
+    .select("*", { count: "exact", head: true })
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getStats() {
-  const [artists, songs, plays] = await Promise.all([
+  const [artists, songs, playCount] = await Promise.all([
     getSupabase()
       .from("artists")
       .select("*", { count: "exact", head: true }),
     getSupabase()
       .from("songs")
       .select("*", { count: "exact", head: true }),
-    getSupabase()
-      .from("plays")
-      .select("*", { count: "exact", head: true })
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false),
+    getTotalPlayCount(),
   ]);
 
   return {
     artistCount: artists.count ?? 0,
     songCount: songs.count ?? 0,
-    playCount: plays.count ?? 0,
+    playCount,
   };
 }
 
@@ -235,6 +242,34 @@ export async function getSongPlays(
     time_played: play.time_played,
     station: play.stations.slug,
   }));
+}
+
+export async function getSongPlayRange(
+  artistName: string,
+  songTitle: string
+): Promise<{ firstPlayed: string; lastPlayed: string } | null> {
+  const songId = await findSongId(artistName, songTitle);
+  if (songId === null) return null;
+
+  const edge = (ascending: boolean) =>
+    getSupabase()
+      .from("plays")
+      .select("time_played")
+      .eq("song_id", songId)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+      .order("time_played", { ascending })
+      .limit(1);
+
+  const [first, last] = await Promise.all([edge(true), edge(false)]);
+  if (first.error) throw first.error;
+  if (last.error) throw last.error;
+  if (!first.data?.length || !last.data?.length) return null;
+
+  return {
+    firstPlayed: first.data[0].time_played,
+    lastPlayed: last.data[0].time_played,
+  };
 }
 
 export async function getSongStationBreakdown(
@@ -552,30 +587,6 @@ export async function getStationPlays(
     title: play.songs.title,
     time_played: play.time_played,
     station: play.stations.slug,
-  }));
-}
-
-export async function getTopArtistsForStation(
-  slug: string,
-  limit: number = 10
-): Promise<{ name: string; playCount: number }[]> {
-  const { data: station } = await getSupabase()
-    .from("stations")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-
-  if (!station) return [];
-
-  const { data, error } = await getSupabase().rpc("top_artists_for_station", {
-    p_station_id: station.id,
-    result_limit: limit,
-  });
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    name: row.name,
-    playCount: row.play_count,
   }));
 }
 

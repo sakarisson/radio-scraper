@@ -1,17 +1,5 @@
-import * as skeleton from "@/styles/loading.css";
+import { DetailSkeleton } from "@/app/components/DetailSkeleton";
 
 export default function Loading() {
-  return (
-    <div>
-      <div className={skeleton.skeletonBack} />
-      <div className={skeleton.skeletonHeading} />
-      {Array.from({ length: 8 }, (_, i) => (
-        <div key={i} className={skeleton.skeletonTableRow}>
-          <div className={skeleton.skeletonCell} />
-          <div className={skeleton.skeletonCell} />
-          <div className={skeleton.skeletonCell} />
-        </div>
-      ))}
-    </div>
-  );
+  return <DetailSkeleton />;
 }

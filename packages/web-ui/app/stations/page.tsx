@@ -1,39 +1,78 @@
 import Link from "next/link";
-import { getStations } from "@/utils/database";
-import { heading } from "@/styles/typography.css";
+import { getEarliestPlayDate, getStations } from "@/utils/database";
+import format from "date-fns/format";
 import * as styles from "@/styles/stations.css";
+import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
+import { countWord, formatNumber, formatShare, timeAgo } from "@/utils/format";
+import { StationDot } from "../components/Station";
+import { SplitBar } from "../components/StationSplit";
 
 export default async function StationsPage() {
-  const stations = await getStations();
+  const [unsorted, earliest] = await Promise.all([
+    getStations(),
+    getEarliestPlayDate(),
+  ]);
+
+  const stations = [...unsorted].sort((a, b) => b.playCount - a.playCount);
+  const total = stations.reduce((sum, s) => sum + s.playCount, 0);
+  const since = earliest ? format(new Date(earliest), "MMMM yyyy") : "the start";
 
   return (
-    <div>
-      <h1 className={heading}>{strings.stationsTitle}</h1>
+    <section className={ui.intro.page}>
+      <span className={ui.eyebrow}>{strings.stationsTitle}</span>
+      <h1 className={`${ui.display.md} ${styles.summary}`}>
+        {strings.stationsSummary(
+          formatNumber(total),
+          countWord(stations.length),
+          since
+        )}
+      </h1>
 
-      <div className={styles.stationGrid}>
-        {stations.map((station) => (
-          <Link
-            key={station.slug}
-            href={`/stations/${station.slug}`}
-            className={styles.stationCard}
-          >
-            <div className={styles.stationSlug}>{station.slug}</div>
-            <div className={styles.stationMeta}>
-              {station.playCount.toLocaleString("en-US")} {strings.totalPlays}
-            </div>
-            {station.latestSong && (
-              <div className={styles.stationLatest}>
-                <span className={styles.stationLatestTitle}>
-                  {station.latestSong.title}
-                </span>{" "}
-                &mdash; {station.latestSong.artist}
-              </div>
-            )}
-          </Link>
-        ))}
+      <div className={styles.splitWrap}>
+        <SplitBar
+          items={stations.map((s) => ({
+            station: s.slug,
+            playCount: s.playCount,
+          }))}
+        />
       </div>
-    </div>
+
+      {stations.map((station) => (
+        <Link
+          key={station.slug}
+          href={`/stations/${station.slug}`}
+          className={`${styles.stationRow} ${ui.row}`}
+        >
+          <span className={styles.stationName}>
+            <StationDot station={station.slug} size="md" />
+            {station.slug}
+          </span>
+          <span className={styles.stationPlays}>
+            <span>{formatNumber(station.playCount)}</span>
+            <span className={styles.small}>
+              {strings.playsShare(formatShare(station.playCount, total))}
+            </span>
+          </span>
+          {station.latestSong && (
+            <span className={styles.stationLatest}>
+              <span className={styles.small}>
+                {strings.lastPlayedAgo(timeAgo(station.latestSong.time_played))}
+              </span>
+              <span className={styles.stationLatestSong}>
+                {station.latestSong.title}
+              </span>
+              <span className={styles.stationLatestArtist}>
+                {station.latestSong.artist}
+              </span>
+            </span>
+          )}
+          <span className={styles.arrow} aria-hidden>
+            &rarr;
+          </span>
+        </Link>
+      ))}
+    </section>
   );
 }
 

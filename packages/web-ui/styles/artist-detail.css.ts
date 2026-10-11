@@ -1,161 +1,161 @@
 import { style } from "@vanilla-extract/css";
 import { vars } from "./theme.css";
 
-export const backLink = style({
-  display: "inline-flex",
-  alignItems: "center",
-  fontSize: vars.fontSize.sm,
-  fontFamily: vars.font.body,
-  color: vars.color.textSecondary,
-  textDecoration: "none",
-  marginBottom: vars.space["6"],
-  transition: "color 150ms ease",
-  ":hover": {
-    color: vars.color.accent,
+const medium = "(max-width: 760px)";
+const narrow = "(max-width: 480px)";
+
+export const subtitle = style({
+  display: "inline-block",
+  marginTop: "16px",
+  fontSize: "22px",
+  color: vars.color.muted,
+});
+
+/* Songs table */
+
+const songGrid = style({
+  display: "grid",
+  gridTemplateColumns:
+    "minmax(0, 2.2fr) minmax(120px, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr)",
+  gap: "24px",
+  "@media": {
+    [medium]: {
+      gridTemplateColumns: "minmax(0, 2fr) minmax(100px, 1fr) minmax(0, 1fr)",
+      gap: "16px",
+    },
+    [narrow]: {
+      gridTemplateColumns: "minmax(0, 1fr) auto",
+    },
   },
 });
 
-export const headerRow = style({
+export const songHeader = style([
+  songGrid,
+  {
+    padding: "12px 0",
+    fontSize: "13px",
+    color: vars.color.muted,
+  },
+]);
+
+export const songRow = style([
+  songGrid,
+  {
+    alignItems: "center",
+    padding: "14px 0",
+    fontSize: "15px",
+  },
+]);
+
+export const songTitle = style({
+  fontSize: "16px",
+  fontWeight: 500,
+  overflowWrap: "anywhere",
+});
+
+export const hideMedium = style({
+  "@media": { [medium]: { display: "none" } },
+});
+
+export const hideNarrow = style({
+  "@media": { [narrow]: { display: "none" } },
+});
+
+export const playsCell = style({
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+});
+
+export const playsNumber = style({
+  minWidth: "36px",
+});
+
+export const playsTrack = style({
+  flex: 1,
+  "@media": { [narrow]: { display: "none" } },
+});
+
+/* Recent plays */
+
+export const playRow = style({
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 2fr) 100px minmax(0, 1fr)",
+  gap: "24px",
+  alignItems: "baseline",
+  padding: "14px 0",
+  fontSize: "15px",
+  "@media": {
+    [narrow]: {
+      gridTemplateColumns: "minmax(0, 1fr) auto",
+      gap: "4px 16px",
+    },
+  },
+});
+
+export const playWhen = style({
+  color: vars.color.muted,
+  "@media": {
+    [narrow]: { gridColumn: "1 / -1", fontSize: "14px" },
+  },
+});
+
+/* Song play history */
+
+export const history = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: "48px",
+  paddingTop: "32px",
+});
+
+export const historyMonth = style({
+  display: "grid",
+  gridTemplateColumns: "minmax(140px, 200px) minmax(0, 1fr)",
+  gap: "32px",
+  alignItems: "start",
+  "@media": {
+    [medium]: {
+      gridTemplateColumns: "minmax(0, 1fr)",
+      gap: "16px",
+    },
+  },
+});
+
+export const historyLabel = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+  position: "sticky",
+  top: "24px",
+  "@media": { [medium]: { position: "static" } },
+});
+
+export const historyMonthName = style({
+  fontSize: "20px",
+  fontWeight: 500,
+  letterSpacing: "-0.01em",
+});
+
+export const historyPlays = style({
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+  columnGap: "32px",
+});
+
+export const historyPlay = style({
   display: "flex",
   alignItems: "baseline",
-  gap: vars.space["3"],
-  marginBottom: vars.space["6"],
-  flexWrap: "wrap",
+  gap: "12px",
+  padding: "12px 0",
+  fontSize: "15px",
 });
 
-export const playCount = style({
-  fontSize: vars.fontSize.base,
-  fontFamily: vars.font.body,
-  color: vars.color.textSecondary,
+export const historyDay = style({
+  width: "52px",
 });
 
-export const stationBreakdown = style({
-  display: "flex",
-  gap: vars.space["3"],
-  marginBottom: vars.space["6"],
-  flexWrap: "wrap",
-});
-
-export const stationBreakdownItem = style({
-  display: "flex",
-  alignItems: "center",
-  gap: vars.space["2"],
-});
-
-export const table = style({
-  width: "100%",
-  borderCollapse: "collapse",
-  "@media": {
-    "(max-width: 639px)": {
-      display: "none",
-    },
-  },
-});
-
-export const th = style({
-  textAlign: "left",
-  padding: `${vars.space["2"]} ${vars.space["3"]}`,
-  fontSize: vars.fontSize.sm,
-  fontFamily: vars.font.body,
-  fontWeight: 600,
-  color: vars.color.textSecondary,
-  borderBottom: `2px solid ${vars.color.border}`,
-});
-
-export const td = style({
-  padding: `${vars.space["3"]}`,
-  fontSize: vars.fontSize.base,
-  fontFamily: vars.font.body,
-  color: vars.color.textPrimary,
-  borderBottom: `1px solid ${vars.color.border}`,
-  verticalAlign: "middle",
-});
-
-export const tdTime = style([
-  td,
-  {
-    fontSize: vars.fontSize.sm,
-    color: vars.color.textSecondary,
-    whiteSpace: "nowrap",
-  },
-]);
-
-export const mobileList = style({
-  display: "none",
-  flexDirection: "column",
-  gap: vars.space["3"],
-  "@media": {
-    "(max-width: 639px)": {
-      display: "flex",
-    },
-  },
-});
-
-export const mobileCard = style({
-  backgroundColor: vars.color.bgSurface,
-  border: `1px solid ${vars.color.border}`,
-  borderRadius: vars.radius.md,
-  padding: vars.space["4"],
-});
-
-export const sectionHeading = style({
-  fontSize: vars.fontSize.lg,
-  fontFamily: vars.font.body,
-  fontWeight: 600,
-  color: vars.color.textPrimary,
-  marginTop: vars.space["12"],
-  marginBottom: vars.space["4"],
-  selectors: {
-    "&:first-child": {
-      marginTop: 0,
-    },
-  },
-});
-
-export const thRight = style([
-  th,
-  {
-    textAlign: "right",
-  },
-]);
-
-export const tdRight = style([
-  td,
-  {
-    textAlign: "right",
-    fontVariantNumeric: "tabular-nums",
-  },
-]);
-
-export const songLink = style({
-  color: vars.color.textPrimary,
-  textDecoration: "none",
-  transition: "color 150ms ease",
-  ":hover": {
-    color: vars.color.accent,
-  },
-});
-
-export const mobileTitle = style({
-  display: "block",
-  fontSize: vars.fontSize.base,
-  fontFamily: vars.font.body,
-  fontWeight: 500,
-  color: vars.color.textPrimary,
-  textDecoration: "none",
-  marginBottom: vars.space["1"],
-  transition: "color 150ms ease",
-  ":hover": {
-    color: vars.color.accent,
-  },
-});
-
-export const mobileMeta = style({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: vars.space["2"],
-  fontSize: vars.fontSize.sm,
-  fontFamily: vars.font.body,
-  color: vars.color.textSecondary,
+export const historyTime = style({
+  width: "52px",
+  color: vars.color.muted,
 });
