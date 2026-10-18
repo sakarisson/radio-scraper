@@ -1,17 +1,28 @@
-FROM node:20-alpine
-RUN corepack enable && corepack prepare pnpm@8.6.9 --activate
+# Node 22: the vanilla-extract build tooling needs Node 20.19+ or 22.12+
+FROM node:22-alpine AS build
+RUN npm install -g pnpm@8.6.9
 
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
-
-ARG SUPABASE_URL
-ARG SUPABASE_SERVICE_ROLE_KEY
-ENV SUPABASE_URL=$SUPABASE_URL
-ENV SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+# The build doesn't touch the database, so it needs no Supabase credentials.
+# At runtime they come from Fly secrets.
 RUN pnpm --filter web-ui build
 
+# Only the standalone server and its traced dependencies go into the final
+# image, not the whole workspace's node_modules.
+FROM node:22-alpine
+WORKDIR /app
+
+ENV NODE_ENV=production
 ENV PORT=8080
+ENV HOSTNAME=0.0.0.0
+
+# Owned by the runtime user so Next can write to .next/cache
+COPY --from=build --chown=node:node /app/packages/web-ui/.next/standalone ./
+COPY --from=build --chown=node:node /app/packages/web-ui/.next/static ./packages/web-ui/.next/static
+
+USER node
 EXPOSE 8080
 
-CMD ["pnpm", "--filter", "web-ui", "start", "--", "-p", "8080"]
+CMD ["node", "packages/web-ui/server.js"]

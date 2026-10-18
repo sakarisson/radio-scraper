@@ -1,3 +1,4 @@
+const path = require("path");
 const { createVanillaExtractPlugin } = require("@vanilla-extract/next-plugin");
 
 const withVanillaExtract = createVanillaExtractPlugin({
@@ -6,6 +7,14 @@ const withVanillaExtract = createVanillaExtractPlugin({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-contained server in .next/standalone for a small Docker image
+  output: "standalone",
+  // The app lives in a pnpm workspace, so trace dependencies from its root
+  outputFileTracingRoot: path.join(__dirname, "../.."),
+  turbopack: {
+    root: path.join(__dirname, "../.."),
+  },
+
   // Data functions in utils/database.ts are cached with "use cache"
   cacheComponents: true,
   // Links prefetch each route's shared shell (layout + loading skeleton)

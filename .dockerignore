@@ -1,6 +1,7 @@
 node_modules
 packages/*/node_modules
 packages/scraper/dist
-.env
+**/.env*
 *.sqlite
 .git
+packages/*/.next
