@@ -35,14 +35,17 @@ export function clockTime(date: string | Date) {
   return `${pad(p.hour)}:${pad(p.minute)}`;
 }
 
+/** "Oct 11", with the year added when it isn't the current one */
+export function shortDate(date: string | Date) {
+  const p = faroeParts(date);
+  return p.year === faroeParts(new Date()).year
+    ? `${shortMonth(p.month)} ${p.day}`
+    : `${shortMonth(p.month)} ${p.day} ${p.year}`;
+}
+
 /** "Oct 11, 11:55", with the year added when it isn't the current one */
 export function playTime(date: string | Date) {
-  const p = faroeParts(date);
-  const day =
-    p.year === faroeParts(new Date()).year
-      ? `${shortMonth(p.month)} ${p.day}`
-      : `${shortMonth(p.month)} ${p.day} ${p.year}`;
-  return `${day}, ${clockTime(date)}`;
+  return `${shortDate(date)}, ${clockTime(date)}`;
 }
 
 /** "Oct 11, 2025 at 11:55" */

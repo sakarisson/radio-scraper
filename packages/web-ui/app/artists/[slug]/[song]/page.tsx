@@ -1,4 +1,3 @@
-import { z } from "zod";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -8,77 +7,46 @@ import {
   getSongStationBreakdown,
   getSongDailyPlays,
 } from "@/utils/database";
-import format from "date-fns/format";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { clockTime, formatNumber, relativeTime } from "@/utils/format";
+import {
+  clockTime,
+  formatNumber,
+  relativeTime,
+  shortDate,
+  timeAgo,
+} from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
-import { Pagination } from "@/app/components/Pagination";
 import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
 
-const PAGE_SIZE = 50;
-
-const paramsSchema = z
-  .object({
-    page: z.string().regex(/^\d+$/).transform(Number).optional(),
-  })
-  .optional();
-
-type Play = { id: number; time_played: string; station: string };
-
-function groupByMonth(plays: Play[]) {
-  const groups: { key: string; label: string; plays: Play[] }[] = [];
-  for (const play of plays) {
-    const date = new Date(play.time_played);
-    const key = format(date, "yyyy-MM");
-    let group = groups[groups.length - 1];
-    if (!group || group.key !== key) {
-      group = { key, label: format(date, "MMMM yyyy"), plays: [] };
-      groups.push(group);
-    }
-    group.plays.push(play);
-  }
-  return groups;
-}
+const RECENT_PLAYS = 10;
 
 export default async function SongPage({
   params,
-  searchParams,
 }: {
   params: { slug: string; song: string };
-  searchParams?: unknown;
 }) {
   const artistName = decodeURIComponent(params.slug);
   const songTitle = decodeURIComponent(params.song);
-  const parsed = paramsSchema.safeParse(searchParams);
-  const page = parsed.success ? parsed.data?.page ?? 0 : 0;
-  const offset = page * PAGE_SIZE;
 
-  const [
-    plays,
-    totalCount,
-    playRange,
-    stationBreakdown,
-    dailyPlays,
-  ] = await Promise.all([
-    getSongPlays(artistName, songTitle, offset, PAGE_SIZE),
-    getSongPlayCount(artistName, songTitle),
-    getSongPlayRange(artistName, songTitle),
-    getSongStationBreakdown(artistName, songTitle),
-    getSongDailyPlays(artistName, songTitle),
-  ]);
+  const [plays, totalCount, playRange, stationBreakdown, dailyPlays] =
+    await Promise.all([
+      getSongPlays(artistName, songTitle, 0, RECENT_PLAYS),
+      getSongPlayCount(artistName, songTitle),
+      getSongPlayRange(artistName, songTitle),
+      getSongStationBreakdown(artistName, songTitle),
+      getSongDailyPlays(artistName, songTitle),
+    ]);
 
   if (plays === null || totalCount === null) {
     notFound();
   }
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const artistHref = `/artists/${params.slug}`;
-  const months = groupByMonth(plays);
 
   return (
     <>
@@ -131,43 +99,31 @@ export default async function SongPage({
       )}
 
       <section className={ui.section.lg}>
-        <h2 className={ui.sectionTitle}>{strings.playHistory}</h2>
-        <div className={styles.history}>
-          {months.map((month) => (
-            <div key={month.key} className={styles.historyMonth}>
-              <div className={styles.historyLabel}>
-                <span className={styles.historyMonthName}>{month.label}</span>
-                <span className={ui.aside}>
-                  {formatNumber(month.plays.length)}{" "}
-                  {month.plays.length === 1 ? strings.play : strings.playsLabel}
-                </span>
-              </div>
-              <div className={styles.historyPlays}>
-                {month.plays.map((play) => (
-                  <div
-                    key={play.id}
-                    className={`${styles.historyPlay} ${ui.row}`}
-                  >
-                    <span className={styles.historyDay}>
-                      {format(new Date(play.time_played), "MMM d")}
-                    </span>
-                    <span className={styles.historyTime}>
-                      {clockTime(play.time_played)}
-                    </span>
-                    <StationLink station={play.station} />
-                  </div>
-                ))}
-              </div>
+        <div className={ui.sectionHeader}>
+          <h2 className={ui.sectionTitle}>{strings.recentPlays}</h2>
+        </div>
+        <div
+          className={styles.songPlays}
+          // Fill the first column before the second, so it reads top to bottom
+          style={{
+            gridTemplateRows: `repeat(${Math.ceil(plays.length / 2)}, auto)`,
+          }}
+        >
+          {plays.map((play) => (
+            <div key={play.id} className={`${styles.songPlay} ${ui.row}`}>
+              <span className={styles.songPlayDay}>
+                {shortDate(play.time_played)}
+              </span>
+              <span className={styles.songPlayTime}>
+                {clockTime(play.time_played)}
+              </span>
+              <StationLink station={play.station} />
+              <span className={styles.songPlayAgo}>
+                {timeAgo(play.time_played)}
+              </span>
             </div>
           ))}
         </div>
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          basePath={`${artistHref}/${params.song}`}
-          prevLabel={strings.newerPlays}
-          nextLabel={strings.olderPlays}
-        />
       </section>
     </>
   );

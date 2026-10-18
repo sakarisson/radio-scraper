@@ -100,62 +100,41 @@ export const playWhen = style({
   },
 });
 
-/* Song play history */
+/* Song page recent plays */
 
-export const history = style({
-  display: "flex",
-  flexDirection: "column",
-  gap: "48px",
-  paddingTop: "32px",
-});
-
-export const historyMonth = style({
+export const songPlays = style({
   display: "grid",
-  gridTemplateColumns: "minmax(140px, 200px) minmax(0, 1fr)",
-  gap: "32px",
-  alignItems: "start",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gridAutoFlow: "column",
+  columnGap: "64px",
   "@media": {
     [medium]: {
       gridTemplateColumns: "minmax(0, 1fr)",
-      gap: "16px",
+      gridAutoFlow: "row",
     },
   },
 });
 
-export const historyLabel = style({
-  display: "flex",
-  flexDirection: "column",
-  gap: "4px",
-  position: "sticky",
-  top: "24px",
-  "@media": { [medium]: { position: "static" } },
-});
-
-export const historyMonthName = style({
-  fontSize: "20px",
-  fontWeight: 500,
-  letterSpacing: "-0.01em",
-});
-
-export const historyPlays = style({
+export const songPlay = style({
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-  columnGap: "32px",
-});
-
-export const historyPlay = style({
-  display: "flex",
+  gridTemplateColumns: "auto 48px auto minmax(0, 1fr)",
+  gap: "16px",
   alignItems: "baseline",
-  gap: "12px",
-  padding: "12px 0",
+  padding: "14px 0",
   fontSize: "15px",
 });
 
-export const historyDay = style({
-  width: "52px",
+export const songPlayDay = style({
+  minWidth: "64px",
+  whiteSpace: "nowrap",
 });
 
-export const historyTime = style({
-  width: "52px",
+export const songPlayTime = style({
   color: vars.color.muted,
+});
+
+export const songPlayAgo = style({
+  justifySelf: "end",
+  color: vars.color.muted,
+  whiteSpace: "nowrap",
 });

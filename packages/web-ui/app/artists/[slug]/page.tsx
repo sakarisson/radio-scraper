@@ -18,17 +18,15 @@ import {
   relativeTime,
 } from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
-import { Pagination } from "@/app/components/Pagination";
 import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
 
-const PAGE_SIZE = 50;
+const RECENT_PLAYS = 10;
 
 const paramsSchema = z
   .object({
-    page: z.string().regex(/^\d+$/).transform(Number).optional(),
     sort: z.enum(["recent", "plays"]).optional(),
   })
   .optional();
@@ -47,24 +45,26 @@ export default async function ArtistPage({
 }) {
   const artistName = decodeURIComponent(params.slug);
   const parsed = paramsSchema.safeParse(searchParams);
-  const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const sort = parsed.success ? parsed.data?.sort ?? "recent" : "recent";
-  const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, stationBreakdown, songsOverview, dailyPlays] =
-    await Promise.all([
-      getArtistPlays(artistName, offset, PAGE_SIZE),
-      getArtistPlayCount(artistName),
-      getArtistStationBreakdown(artistName),
-      getArtistSongsOverview(artistName),
-      getArtistDailyPlays(artistName),
-    ]);
+  const [
+    plays,
+    totalCount,
+    stationBreakdown,
+    songsOverview,
+    dailyPlays,
+  ] = await Promise.all([
+    getArtistPlays(artistName, 0, RECENT_PLAYS),
+    getArtistPlayCount(artistName),
+    getArtistStationBreakdown(artistName),
+    getArtistSongsOverview(artistName),
+    getArtistDailyPlays(artistName),
+  ]);
 
   if (plays === null || totalCount === null) {
     notFound();
   }
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const songs = [...(songsOverview ?? [])].sort((a, b) =>
     sort === "plays"
       ? b.playCount - a.playCount
@@ -76,7 +76,6 @@ export default async function ArtistPage({
   function sortHref(key: (typeof sortOptions)[number]["key"]) {
     const qs = new URLSearchParams();
     if (key !== "recent") qs.set("sort", key);
-    if (page > 0) qs.set("page", String(page));
     const s = qs.toString();
     return s ? `${artistHref}?${s}` : artistHref;
   }
@@ -188,14 +187,6 @@ export default async function ArtistPage({
             <span className={styles.playWhen}>{playTime(time_played)}</span>
           </div>
         ))}
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          basePath={artistHref}
-          extraParams={{ sort: sort === "recent" ? undefined : sort }}
-          prevLabel={strings.newerPlays}
-          nextLabel={strings.olderPlays}
-        />
       </section>
     </>
   );
