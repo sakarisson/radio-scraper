@@ -11,6 +11,22 @@ export const subtitle = style({
   color: vars.color.muted,
 });
 
+/* First play, under the intro stats */
+
+export const firstPlay = style({
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "baseline",
+  gap: "6px 16px",
+  marginTop: "32px",
+  fontSize: "15px",
+});
+
+export const firstPlaySong = style({
+  fontWeight: 500,
+  overflowWrap: "anywhere",
+});
+
 /* Songs table */
 
 const songGrid = style({

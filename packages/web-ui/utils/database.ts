@@ -386,7 +386,8 @@ export async function getArtistPlayCount(artistName: string) {
 export async function getArtistPlays(
   artistName: string,
   offset: number = 0,
-  limit: number = 50
+  limit: number = 50,
+  { oldestFirst = false }: { oldestFirst?: boolean } = {}
 ) {
   const artistId = await findArtistId(artistName);
   if (artistId === null) return null;
@@ -408,7 +409,7 @@ export async function getArtistPlays(
     .eq("songs.artist_id", artistId)
     .eq("is_deleted", false)
     .eq("is_likely_not_music", false)
-    .order("time_played", { ascending: false })
+    .order("time_played", { ascending: oldestFirst })
     .range(offset, offset + limit - 1);
 
   if (error) throw error;

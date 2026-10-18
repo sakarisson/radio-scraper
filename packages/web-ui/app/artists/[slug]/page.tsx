@@ -49,12 +49,14 @@ export default async function ArtistPage({
 
   const [
     plays,
+    firstPlays,
     totalCount,
     stationBreakdown,
     songsOverview,
     dailyPlays,
   ] = await Promise.all([
     getArtistPlays(artistName, 0, RECENT_PLAYS),
+    getArtistPlays(artistName, 0, 1, { oldestFirst: true }),
     getArtistPlayCount(artistName),
     getArtistStationBreakdown(artistName),
     getArtistSongsOverview(artistName),
@@ -70,6 +72,7 @@ export default async function ArtistPage({
       ? b.playCount - a.playCount
       : new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime()
   );
+  const firstPlay = firstPlays?.[0];
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
   const artistHref = `/artists/${params.slug}`;
 
@@ -94,6 +97,24 @@ export default async function ArtistPage({
             ]}
           />
         </div>
+        {firstPlay && (
+          <p className={styles.firstPlay}>
+            <span className={ui.muted}>{strings.firstPlay}</span>
+            <Link
+              href={`${artistHref}/${encodeURIComponent(firstPlay.title)}`}
+              className={styles.firstPlaySong}
+            >
+              {firstPlay.title}
+            </Link>
+            <StationLink station={firstPlay.station} />
+            <span
+              className={ui.muted}
+              title={relativeTime(firstPlay.time_played)}
+            >
+              {fullDateTime(firstPlay.time_played)}
+            </span>
+          </p>
+        )}
       </section>
 
       {dailyPlays && (
