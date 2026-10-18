@@ -8,11 +8,15 @@ import {
   getArtistSongsOverview,
   getArtistDailyPlays,
 } from "@/utils/database";
-import format from "date-fns/format";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { formatNumber, playTime, relativeTime } from "@/utils/format";
+import {
+  formatNumber,
+  fullDateTime,
+  playTime,
+  relativeTime,
+} from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { Pagination } from "@/app/components/Pagination";
 import { StationLink } from "@/app/components/Station";
@@ -75,10 +79,6 @@ export default async function ArtistPage({
     if (page > 0) qs.set("page", String(page));
     const s = qs.toString();
     return s ? `${artistHref}?${s}` : artistHref;
-  }
-
-  function fullDate(dateStr: string) {
-    return format(new Date(dateStr), "MMM d, yyyy 'at' HH:mm");
   }
 
   return (
@@ -157,13 +157,13 @@ export default async function ArtistPage({
               </div>
               <span
                 className={`${ui.muted} ${styles.hideMedium}`}
-                title={fullDate(firstPlayed)}
+                title={fullDateTime(firstPlayed)}
               >
                 {relativeTime(firstPlayed)}
               </span>
               <span
                 className={`${ui.muted} ${styles.hideNarrow}`}
-                title={fullDate(lastPlayed)}
+                title={fullDateTime(lastPlayed)}
               >
                 {relativeTime(lastPlayed)}
               </span>

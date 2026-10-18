@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { faroeMonthStart } from "./time";
 
 let _supabase: SupabaseClient | null = null;
 
@@ -441,16 +442,25 @@ async function resolveStationIds(slugs: string[]): Promise<number[]> {
   return (data ?? []).map((s) => s.id);
 }
 
+/** A calendar month in Faroese time, as UTC timestamps [start, end). */
+function faroeMonthRange(year: number, month: number) {
+  const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+  return {
+    start: faroeMonthStart(year, month),
+    end: faroeMonthStart(next.year, next.month),
+  };
+}
+
 export async function getTopArtistsForMonth(
   year: number,
   month: number,
   limit: number = 10,
   stationSlugs?: string[]
 ): Promise<{ name: string; playCount: number }[]> {
-  const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
+  const { start: startOfMonth, end: startOfNextMonth } = faroeMonthRange(
+    year,
+    month
+  );
 
   const stationIds =
     stationSlugs && stationSlugs.length > 0
@@ -477,10 +487,10 @@ export async function getTopSongsForMonth(
   limit: number = 10,
   stationSlugs?: string[]
 ): Promise<{ title: string; artist: string; playCount: number }[]> {
-  const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01T00:00:00Z`;
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  const startOfNextMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00Z`;
+  const { start: startOfMonth, end: startOfNextMonth } = faroeMonthRange(
+    year,
+    month
+  );
 
   const stationIds =
     stationSlugs && stationSlugs.length > 0

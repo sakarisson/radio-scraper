@@ -9,6 +9,7 @@ import * as styles from "@/styles/artists.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
 import { formatNumber } from "@/utils/format";
+import { getCurrentMonth } from "@/utils/months";
 import { Pagination } from "../components/Pagination";
 
 const PAGE_SIZE = 30;
@@ -31,7 +32,7 @@ export default async function ArtistsPage(props: Props) {
   const offset = page * PAGE_SIZE;
   const isSearching = !!query;
 
-  const now = new Date();
+  const now = getCurrentMonth();
 
   const [leaderboard, matchingCount, totalCount, trending] = await Promise.all([
     getTopArtistsAllTime(offset, PAGE_SIZE, query),
@@ -39,7 +40,7 @@ export default async function ArtistsPage(props: Props) {
     isSearching ? getArtistCountWithPlays() : null,
     isSearching
       ? Promise.resolve([])
-      : getTopArtistsForMonth(now.getFullYear(), now.getMonth() + 1, 5),
+      : getTopArtistsForMonth(now.year, now.month, 5),
   ]);
 
   const totalPages = Math.ceil(matchingCount / PAGE_SIZE);
