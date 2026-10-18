@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { getEarliestPlayDate, getStations } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
@@ -14,6 +15,9 @@ import { StationDot } from "../components/Station";
 import { SplitBar } from "../components/StationSplit";
 
 export default async function StationsPage() {
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
   const [unsorted, earliest] = await Promise.all([
     getStations(),
     getEarliestPlayDate(),
@@ -80,5 +84,3 @@ export default async function StationsPage() {
     </section>
   );
 }
-
-export const dynamic = "force-dynamic";

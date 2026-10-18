@@ -1,9 +1,10 @@
 import { z } from "zod";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import {
+  getStation,
   getStationPlays,
-  getStationPlayCount,
   getTotalPlayCount,
 } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
@@ -11,44 +12,57 @@ import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
 import { formatNumber, formatShare, playTime, timeAgo } from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
-import { Pagination } from "@/app/components/Pagination";
+import { CursorPagination } from "@/app/components/Pagination";
 import { StationDot } from "@/app/components/Station";
 import { Stats } from "@/app/components/Stats";
 import { isStale } from "@/utils/stations";
 
 const PAGE_SIZE = 50;
 
+const playId = z.string().regex(/^\d+$/).transform(Number).optional();
+
+// Pages are addressed by a neighbouring play: ?before=<id> for older plays,
+// ?after=<id> for newer ones. See getStationPlays.
 const paramsSchema = z
-  .object({
-    page: z.string().regex(/^\d+$/).transform(Number).optional(),
-  })
+  .object({ before: playId, after: playId })
   .optional();
 
 export default async function StationDetailPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: unknown;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const slug = decodeURIComponent(params.slug);
-  const parsed = paramsSchema.safeParse(searchParams);
-  const page = parsed.success ? parsed.data?.page ?? 0 : 0;
-  const offset = page * PAGE_SIZE;
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
+  const parsed = paramsSchema.safeParse(await searchParams);
+  const cursor = (parsed.success && parsed.data) || {};
 
-  const [plays, totalCount, allPlaysCount, latest] = await Promise.all([
-    getStationPlays(slug, offset, PAGE_SIZE),
-    getStationPlayCount(slug),
-    getTotalPlayCount(),
-    page === 0 ? null : getStationPlays(slug, 0, 1),
-  ]);
-
-  if (plays === null || totalCount === null) {
+  const station = await getStation(slug);
+  if (station === null) {
     notFound();
   }
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  const latestPlay = page === 0 ? plays[0] : latest?.[0];
+  const isFirstPage = cursor.before === undefined && cursor.after === undefined;
+  const [page, allPlaysCount, firstPage] = await Promise.all([
+    getStationPlays(station.id, PAGE_SIZE, cursor),
+    getTotalPlayCount(),
+    isFirstPage ? null : getStationPlays(station.id, PAGE_SIZE),
+  ]);
+
+  const { plays } = page;
+  const totalCount = station.playCount;
+  const latestPlay = (firstPage ?? page).plays[0];
+
+  const basePath = `/stations/${rawSlug}`;
+  const newerHref =
+    page.newerCursor === null ? null : `${basePath}?after=${page.newerCursor}`;
+  const olderHref =
+    page.olderCursor === null ? null : `${basePath}?before=${page.olderCursor}`;
 
   const songHref = (artist: string, title: string) =>
     `/artists/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
@@ -123,10 +137,9 @@ export default async function StationDetailPage({
             </div>
           </div>
         ))}
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          basePath={`/stations/${params.slug}`}
+        <CursorPagination
+          prevHref={newerHref}
+          nextHref={olderHref}
           prevLabel={strings.newerPlays}
           nextLabel={strings.olderPlays}
         />
@@ -134,5 +147,3 @@ export default async function StationDetailPage({
     </>
   );
 }
-
-export const dynamic = "force-dynamic";

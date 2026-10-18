@@ -1,13 +1,8 @@
 import { z } from "zod";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import {
-  getArtistPlays,
-  getArtistPlayCount,
-  getArtistStationBreakdown,
-  getArtistSongsOverview,
-  getArtistDailyPlays,
-} from "@/utils/database";
+import { getArtistPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
@@ -22,8 +17,6 @@ import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
-
-const RECENT_PLAYS = 10;
 
 const paramsSchema = z
   .object({
@@ -40,41 +33,30 @@ export default async function ArtistPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: unknown;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const artistName = decodeURIComponent(params.slug);
-  const parsed = paramsSchema.safeParse(searchParams);
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
+  const { slug } = await params;
+  const artistName = decodeURIComponent(slug);
+  const parsed = paramsSchema.safeParse(await searchParams);
   const sort = parsed.success ? parsed.data?.sort ?? "recent" : "recent";
 
-  const [
-    plays,
-    firstPlays,
-    totalCount,
-    stationBreakdown,
-    songsOverview,
-    dailyPlays,
-  ] = await Promise.all([
-    getArtistPlays(artistName, 0, RECENT_PLAYS),
-    getArtistPlays(artistName, 0, 1, { oldestFirst: true }),
-    getArtistPlayCount(artistName),
-    getArtistStationBreakdown(artistName),
-    getArtistSongsOverview(artistName),
-    getArtistDailyPlays(artistName),
-  ]);
-
-  if (plays === null || totalCount === null) {
+  const artist = await getArtistPage(artistName);
+  if (artist === null) {
     notFound();
   }
 
-  const songs = [...(songsOverview ?? [])].sort((a, b) =>
+  const { plays, firstPlay, totalCount, stationBreakdown, dailyPlays } = artist;
+  const songs = [...artist.songs].sort((a, b) =>
     sort === "plays"
       ? b.playCount - a.playCount
       : new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime()
   );
-  const firstPlay = firstPlays?.[0];
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
-  const artistHref = `/artists/${params.slug}`;
+  const artistHref = `/artists/${slug}`;
 
   function sortHref(key: (typeof sortOptions)[number]["key"]) {
     const qs = new URLSearchParams();
@@ -117,13 +99,11 @@ export default async function ArtistPage({
         )}
       </section>
 
-      {dailyPlays && (
-        <section className={ui.section.sm}>
-          <PlayCalendar daily={dailyPlays} scale="artist" />
-        </section>
-      )}
+      <section className={ui.section.sm}>
+        <PlayCalendar daily={dailyPlays} scale="artist" />
+      </section>
 
-      {stationBreakdown && stationBreakdown.length > 0 && (
+      {stationBreakdown.length > 0 && (
         <section className={ui.section.sm}>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>{strings.playsByStation}</h2>

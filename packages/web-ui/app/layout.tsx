@@ -30,7 +30,9 @@ export default function RootLayout({
         <div className={layout.container}>
           <Header />
           <main>{children}</main>
-          <Footer />
+          <Suspense fallback={null}>
+            <Footer />
+          </Suspense>
         </div>
       </body>
     </html>

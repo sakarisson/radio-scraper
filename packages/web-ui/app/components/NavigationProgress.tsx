@@ -14,12 +14,16 @@ import * as styles from "@/styles/loading.css";
 export function NavigationProgress() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const url = `${pathname}?${searchParams}`;
   const [pending, setPending] = useState(false);
 
-  // The new URL has rendered, so the navigation is done.
-  useEffect(() => {
+  // The new URL has rendered, so the navigation is done. (Resetting state
+  // during render rather than in an effect avoids an extra render pass.)
+  const [renderedUrl, setRenderedUrl] = useState(url);
+  if (renderedUrl !== url) {
+    setRenderedUrl(url);
     setPending(false);
-  }, [pathname, searchParams]);
+  }
 
   useEffect(() => {
     function onClick(e: MouseEvent) {

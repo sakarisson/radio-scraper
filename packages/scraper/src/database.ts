@@ -57,14 +57,28 @@ const getOrCreateSongId = async ({
   return created.id;
 };
 
-const getOrCreateStationId = async (stationSlug: string): Promise<number> => {
+// Stations are never renamed or removed, so their ids can be remembered for
+// the life of the process instead of looked up on every scrape.
+const stationIds = new Map<string, number>();
+
+const findStationId = async (stationSlug: string): Promise<number | null> => {
+  const cached = stationIds.get(stationSlug);
+  if (cached !== undefined) return cached;
+
   const { data: existing } = await supabase
     .from('stations')
     .select('id')
     .eq('slug', stationSlug)
     .single();
 
-  if (existing) return existing.id;
+  if (!existing) return null;
+  stationIds.set(stationSlug, existing.id);
+  return existing.id;
+};
+
+const getOrCreateStationId = async (stationSlug: string): Promise<number> => {
+  const existing = await findStationId(stationSlug);
+  if (existing !== null) return existing;
 
   const { data: created, error } = await supabase
     .from('stations')
@@ -73,46 +87,33 @@ const getOrCreateStationId = async (stationSlug: string): Promise<number> => {
     .single();
 
   if (error || !created) throw error ?? new Error('Failed to create station');
+  stationIds.set(stationSlug, created.id);
   return created.id;
 };
 
 export const getMostRecentPlay = async (stationSlug: string) => {
-  const { data: station } = await supabase
-    .from('stations')
-    .select('id')
-    .eq('slug', stationSlug)
-    .single();
-
-  if (!station) return null;
+  const stationId = await findStationId(stationSlug);
+  if (stationId === null) return null;
 
   const { data: play } = await supabase
     .from('plays')
-    .select('id, song_id')
-    .eq('station_id', station.id)
+    .select('id, songs!inner ( title, artists!inner ( name ) )')
+    .eq('station_id', stationId)
     .order('id', { ascending: false })
     .limit(1)
     .single();
 
   if (!play) return null;
 
-  const { data: song } = await supabase
-    .from('songs')
-    .select('title, artist_id')
-    .eq('id', play.song_id)
-    .single();
-
-  if (!song) return null;
-
-  const { data: artist } = await supabase
-    .from('artists')
-    .select('name')
-    .eq('id', song.artist_id)
-    .single();
+  const song = play.songs as unknown as {
+    title: string;
+    artists: { name: string };
+  };
 
   return {
     id: play.id,
     title: song.title,
-    artist: artist?.name ?? '',
+    artist: song.artists.name,
     station_slug: stationSlug,
   };
 };
