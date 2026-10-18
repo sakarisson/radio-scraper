@@ -27,43 +27,6 @@ function buildHref(
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-/** Previous/next links for pages addressed by cursor rather than number. */
-export function CursorPagination({
-  prevHref,
-  nextHref,
-  prevLabel = strings.previousPage,
-  nextLabel = strings.nextPage,
-}: {
-  prevHref: string | null;
-  nextHref: string | null;
-  prevLabel?: string;
-  nextLabel?: string;
-}) {
-  if (!prevHref && !nextHref) return null;
-
-  return (
-    <div className={ui.pagination}>
-      <span />
-      <div className={ui.paginationButtons}>
-        {prevHref ? (
-          <Link href={prevHref} className={ui.pill.enabled}>
-            {prevLabel}
-          </Link>
-        ) : (
-          <span className={ui.pill.disabled}>{prevLabel}</span>
-        )}
-        {nextHref ? (
-          <Link href={nextHref} className={ui.pill.enabled}>
-            {nextLabel}
-          </Link>
-        ) : (
-          <span className={ui.pill.disabled}>{nextLabel}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function Pagination({
   currentPage,
   totalPages,

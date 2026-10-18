@@ -240,16 +240,17 @@ type StationPlay = {
   time_played: string;
 };
 
-async function fetchStationPlaysPage(
+/** A station's most recent plays, newest first. */
+export async function getStationPlays(
   stationId: number,
-  limit: number,
-  cursor: { before?: number; after?: number }
+  limit: number
 ): Promise<StationPlay[]> {
+  "use cache";
+  cacheLife("live");
+
   const { data, error } = await getSupabase().rpc("station_plays_page", {
     p_station_id: stationId,
     p_limit: limit,
-    p_before_id: cursor.before ?? null,
-    p_after_id: cursor.after ?? null,
   });
 
   if (error) throw error;
@@ -259,64 +260,6 @@ async function fetchStationPlaysPage(
     title: row.title,
     time_played: row.time_played,
   }));
-}
-
-/**
- * One page of a station's plays, newest first. Pages are addressed by the
- * play just past their edge rather than by page number, so that old pages
- * are as cheap as new ones:
- *   - no cursor: the newest plays
- *   - before: the plays just older than that play ("Older plays")
- *   - after: the plays just newer than that play ("Newer plays")
- * A cursor that leads nowhere falls back to the newest plays.
- */
-export async function getStationPlays(
-  stationId: number,
-  pageSize: number,
-  cursor: { before?: number; after?: number } = {}
-): Promise<{
-  plays: StationPlay[];
-  newerCursor: number | null;
-  olderCursor: number | null;
-}> {
-  "use cache";
-  cacheLife("live");
-
-  // One extra row tells whether there's another page in that direction
-  if (cursor.after !== undefined) {
-    const rows = await fetchStationPlaysPage(stationId, pageSize + 1, {
-      after: cursor.after,
-    });
-    // Otherwise this is the newest page, so show it in full
-    if (rows.length > pageSize) {
-      const plays = rows.slice(1);
-      return {
-        plays,
-        newerCursor: plays[0].id,
-        olderCursor: plays[plays.length - 1].id,
-      };
-    }
-  } else if (cursor.before !== undefined) {
-    const rows = await fetchStationPlaysPage(stationId, pageSize + 1, {
-      before: cursor.before,
-    });
-    if (rows.length > 0) {
-      const plays = rows.slice(0, pageSize);
-      return {
-        plays,
-        newerCursor: plays[0].id,
-        olderCursor: rows.length > pageSize ? plays[plays.length - 1].id : null,
-      };
-    }
-  }
-
-  const rows = await fetchStationPlaysPage(stationId, pageSize + 1, {});
-  const plays = rows.slice(0, pageSize);
-  return {
-    plays,
-    newerCursor: null,
-    olderCursor: rows.length > pageSize ? plays[plays.length - 1].id : null,
-  };
 }
 
 // ---------------------------------------------------------------------------
