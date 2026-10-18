@@ -28,10 +28,11 @@ const RECENT_PLAYS = 10;
 export default async function SongPage({
   params,
 }: {
-  params: { slug: string; song: string };
+  params: Promise<{ slug: string; song: string }>;
 }) {
-  const artistName = decodeURIComponent(params.slug);
-  const songTitle = decodeURIComponent(params.song);
+  const { slug, song } = await params;
+  const artistName = decodeURIComponent(slug);
+  const songTitle = decodeURIComponent(song);
 
   const [plays, totalCount, playRange, stationBreakdown, dailyPlays] =
     await Promise.all([
@@ -46,7 +47,7 @@ export default async function SongPage({
     notFound();
   }
 
-  const artistHref = `/artists/${params.slug}`;
+  const artistHref = `/artists/${slug}`;
 
   return (
     <>

@@ -28,11 +28,12 @@ export default async function StationDetailPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: unknown;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const slug = decodeURIComponent(params.slug);
-  const parsed = paramsSchema.safeParse(searchParams);
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
+  const parsed = paramsSchema.safeParse(await searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const offset = page * PAGE_SIZE;
 
@@ -126,7 +127,7 @@ export default async function StationDetailPage({
         <Pagination
           currentPage={page}
           totalPages={totalPages}
-          basePath={`/stations/${params.slug}`}
+          basePath={`/stations/${rawSlug}`}
           prevLabel={strings.newerPlays}
           nextLabel={strings.olderPlays}
         />

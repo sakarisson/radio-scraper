@@ -40,11 +40,12 @@ export default async function ArtistPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: unknown;
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const artistName = decodeURIComponent(params.slug);
-  const parsed = paramsSchema.safeParse(searchParams);
+  const { slug } = await params;
+  const artistName = decodeURIComponent(slug);
+  const parsed = paramsSchema.safeParse(await searchParams);
   const sort = parsed.success ? parsed.data?.sort ?? "recent" : "recent";
 
   const [
@@ -74,7 +75,7 @@ export default async function ArtistPage({
   );
   const firstPlay = firstPlays?.[0];
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
-  const artistHref = `/artists/${params.slug}`;
+  const artistHref = `/artists/${slug}`;
 
   function sortHref(key: (typeof sortOptions)[number]["key"]) {
     const qs = new URLSearchParams();

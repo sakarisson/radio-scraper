@@ -15,7 +15,7 @@ import { Pagination } from "../components/Pagination";
 const PAGE_SIZE = 30;
 
 type Props = {
-  searchParams?: unknown;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const paramsSchema = z
@@ -26,7 +26,7 @@ const paramsSchema = z
   .optional();
 
 export default async function ArtistsPage(props: Props) {
-  const parsed = paramsSchema.safeParse(props.searchParams);
+  const parsed = paramsSchema.safeParse(await props.searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const query = parsed.success ? parsed.data?.q?.trim() || undefined : undefined;
   const offset = page * PAGE_SIZE;

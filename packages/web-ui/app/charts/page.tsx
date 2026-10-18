@@ -59,9 +59,9 @@ function buildChartsHref(
 export default async function ChartsPage({
   searchParams,
 }: {
-  searchParams?: unknown;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const parsed = paramsSchema.safeParse(searchParams);
+  const parsed = paramsSchema.safeParse(await searchParams);
   const monthParam = parsed.success ? parsed.data?.month : undefined;
   const stationsParam = parsed.success ? parsed.data?.stations : undefined;
   const { year, month } = parseMonth(monthParam);
