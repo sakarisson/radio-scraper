@@ -12,6 +12,11 @@ export const vars = createThemeContract({
     muted: null,
     line: null,
     soft: null,
+    // Sequential scale for the play calendar, fewest to most plays
+    heat1: null,
+    heat2: null,
+    heat3: null,
+    heat4: null,
   },
   font: {
     body: null,
@@ -24,6 +29,10 @@ const light = {
   muted: "oklch(0.5 0.02 240)",
   line: "oklch(0.89 0.01 235)",
   soft: "oklch(0.945 0.008 230)",
+  heat1: "oklch(0.86 0.05 245)",
+  heat2: "oklch(0.74 0.09 245)",
+  heat3: "oklch(0.6 0.12 245)",
+  heat4: "oklch(0.46 0.12 245)",
 };
 
 const dark = {
@@ -32,6 +41,10 @@ const dark = {
   muted: "oklch(0.7 0.015 235)",
   line: "oklch(0.32 0.015 240)",
   soft: "oklch(0.24 0.016 240)",
+  heat1: "oklch(0.36 0.06 245)",
+  heat2: "oklch(0.49 0.09 245)",
+  heat3: "oklch(0.63 0.11 245)",
+  heat4: "oklch(0.79 0.1 245)",
 };
 
 createGlobalTheme(":root", vars, {

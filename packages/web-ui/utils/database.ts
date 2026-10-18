@@ -290,6 +290,22 @@ export async function getSongStationBreakdown(
   }));
 }
 
+/** Plays per Faroese local date, e.g. { "2025-10-12": 3 }. */
+export async function getSongDailyPlays(
+  artistName: string,
+  songTitle: string
+): Promise<Record<string, number> | null> {
+  const songId = await findSongId(artistName, songTitle);
+  if (songId === null) return null;
+
+  const { data, error } = await getSupabase().rpc("song_daily_plays", {
+    p_song_id: songId,
+  });
+
+  if (error) throw error;
+  return (data ?? {}) as Record<string, number>;
+}
+
 export async function getArtistStationBreakdown(
   artistName: string
 ): Promise<{ station: string; playCount: number }[] | null> {
