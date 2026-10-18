@@ -1,12 +1,7 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import {
-  getSongPlays,
-  getSongPlayCount,
-  getSongPlayRange,
-  getSongStationBreakdown,
-  getSongDailyPlays,
-} from "@/utils/database";
+import { getSongPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
@@ -23,30 +18,24 @@ import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
 
-const RECENT_PLAYS = 10;
-
 export default async function SongPage({
   params,
 }: {
   params: Promise<{ slug: string; song: string }>;
 }) {
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
   const { slug, song } = await params;
   const artistName = decodeURIComponent(slug);
   const songTitle = decodeURIComponent(song);
 
-  const [plays, totalCount, playRange, stationBreakdown, dailyPlays] =
-    await Promise.all([
-      getSongPlays(artistName, songTitle, 0, RECENT_PLAYS),
-      getSongPlayCount(artistName, songTitle),
-      getSongPlayRange(artistName, songTitle),
-      getSongStationBreakdown(artistName, songTitle),
-      getSongDailyPlays(artistName, songTitle),
-    ]);
-
-  if (plays === null || totalCount === null) {
+  const page = await getSongPage(artistName, songTitle);
+  if (page === null) {
     notFound();
   }
 
+  const { plays, totalCount, playRange, stationBreakdown, dailyPlays } = page;
   const artistHref = `/artists/${slug}`;
 
   return (
@@ -84,13 +73,11 @@ export default async function SongPage({
         </div>
       </section>
 
-      {dailyPlays && (
-        <section className={ui.section.sm}>
-          <PlayCalendar daily={dailyPlays} />
-        </section>
-      )}
+      <section className={ui.section.sm}>
+        <PlayCalendar daily={dailyPlays} />
+      </section>
 
-      {stationBreakdown && stationBreakdown.length > 0 && (
+      {stationBreakdown.length > 0 && (
         <section className={ui.section.sm}>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>{strings.playsByStation}</h2>
@@ -129,5 +116,3 @@ export default async function SongPage({
     </>
   );
 }
-
-export const dynamic = "force-dynamic";

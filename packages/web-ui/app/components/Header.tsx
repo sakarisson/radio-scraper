@@ -1,7 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import * as styles from "@/styles/layout.css";
 import { strings } from "@/utils/strings";
-import { Nav } from "./Nav";
+import { Nav, NavLinks } from "./Nav";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
@@ -12,7 +13,11 @@ export function Header() {
         {strings.siteName}
       </Link>
       <nav className={styles.nav}>
-        <Nav />
+        {/* The current path isn't known when the page shell is prerendered,
+            so the shell shows the links without a highlight */}
+        <Suspense fallback={<NavLinks pathname={null} />}>
+          <Nav />
+        </Suspense>
         <ThemeToggle />
       </nav>
     </header>

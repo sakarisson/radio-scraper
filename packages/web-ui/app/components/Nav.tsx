@@ -11,13 +11,14 @@ const items = [
   { href: "/stations", label: strings.navStations },
 ];
 
-export function Nav() {
-  const pathname = usePathname();
-
+/** The nav links, with the one for the current section highlighted. */
+export function NavLinks({ pathname }: { pathname: string | null }) {
   return (
     <>
       {items.map(({ href, label }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
+        const active =
+          pathname !== null &&
+          (pathname === href || pathname.startsWith(`${href}/`));
         return (
           <Link
             key={href}
@@ -31,4 +32,8 @@ export function Nav() {
       })}
     </>
   );
+}
+
+export function Nav() {
+  return <NavLinks pathname={usePathname()} />;
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import {
   getStats,
   getRecentPlays,
@@ -15,6 +16,9 @@ import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
 import { compareStations, isStale } from "@/utils/stations";
 
 export default async function Home() {
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
   const chartMonth = getLastCompletedMonth();
   const [stats, recentPlays, latestPerStation, topSongs] = await Promise.all([
     getStats(),
@@ -151,5 +155,3 @@ export default async function Home() {
     </>
   );
 }
-
-export const dynamic = "force-dynamic";

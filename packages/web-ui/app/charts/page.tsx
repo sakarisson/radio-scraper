@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { z } from "zod";
 import { getAllStationSlugs } from "@/utils/database";
 import * as styles from "@/styles/charts.css";
@@ -61,6 +62,9 @@ export default async function ChartsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
   const parsed = paramsSchema.safeParse(await searchParams);
   const monthParam = parsed.success ? parsed.data?.month : undefined;
   const stationsParam = parsed.success ? parsed.data?.stations : undefined;
@@ -171,5 +175,3 @@ export default async function ChartsPage({
     </>
   );
 }
-
-export const dynamic = "force-dynamic";

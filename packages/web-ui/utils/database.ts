@@ -1,6 +1,10 @@
 import "server-only";
+import { cacheLife } from "next/cache";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { faroeMonthStart } from "./time";
+
+// Every exported function here is cached with "use cache". The cache lifetimes
+// ("live", "stats", "archive") are defined in next.config.js.
 
 let _supabase: SupabaseClient | null = null;
 
@@ -18,18 +22,42 @@ function getSupabase() {
   return _supabase;
 }
 
-export async function getTotalPlayCount() {
-  const { count, error } = await getSupabase()
-    .from("plays")
-    .select("*", { count: "exact", head: true })
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
+/** Escape LIKE wildcards so `ilike` only does a case-insensitive match. */
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+// ---------------------------------------------------------------------------
+// Site-wide totals
+
+type StationStats = { stationId: number; slug: string; playCount: number };
+
+/** Music plays per station, from the station_play_stats materialized view. */
+async function getStationStats(): Promise<StationStats[]> {
+  const { data, error } = await getSupabase()
+    .from("station_play_stats")
+    .select("station_id, slug, play_count");
 
   if (error) throw error;
-  return count ?? 0;
+  return (data ?? []).map((row) => ({
+    stationId: row.station_id,
+    slug: row.slug,
+    playCount: row.play_count,
+  }));
+}
+
+export async function getTotalPlayCount() {
+  "use cache";
+  cacheLife("stats");
+
+  const stations = await getStationStats();
+  return stations.reduce((sum, s) => sum + s.playCount, 0);
 }
 
 export async function getStats() {
+  "use cache";
+  cacheLife("stats");
+
   const [artists, songs, playCount] = await Promise.all([
     getSupabase()
       .from("artists")
@@ -40,6 +68,9 @@ export async function getStats() {
     getTotalPlayCount(),
   ]);
 
+  if (artists.error) throw artists.error;
+  if (songs.error) throw songs.error;
+
   return {
     artistCount: artists.count ?? 0,
     songCount: songs.count ?? 0,
@@ -47,7 +78,30 @@ export async function getStats() {
   };
 }
 
+export async function getEarliestPlayDate() {
+  "use cache";
+  cacheLife("archive");
+
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select("time_played")
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false)
+    .order("time_played", { ascending: true })
+    .limit(1);
+
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return data[0].time_played as string;
+}
+
+// ---------------------------------------------------------------------------
+// Recent plays
+
 export async function getRecentPlays(limit: number) {
+  "use cache";
+  cacheLife("live");
+
   const { data, error } = await getSupabase()
     .from("plays")
     .select(
@@ -69,15 +123,18 @@ export async function getRecentPlays(limit: number) {
   if (error) throw error;
 
   return data.map((play: any) => ({
-    id: play.id,
-    artist: (play.songs as any).artists.name,
-    title: (play.songs as any).title,
-    time_played: play.time_played,
-    station: (play.stations as any).slug,
+    id: play.id as number,
+    artist: play.songs.artists.name as string,
+    title: play.songs.title as string,
+    time_played: play.time_played as string,
+    station: play.stations.slug as string,
   }));
 }
 
 export async function getLatestPlayPerStation() {
+  "use cache";
+  cacheLife("live");
+
   const { data: stations, error: stationsError } = await getSupabase()
     .from("stations")
     .select("id, slug");
@@ -91,13 +148,11 @@ export async function getLatestPlayPerStation() {
         .from("plays")
         .select(
           `
-          id,
           time_played,
           songs!inner (
             title,
             artists!inner ( name )
-          ),
-          stations!inner ( slug )
+          )
         `
         )
         .eq("station_id", station.id)
@@ -111,496 +166,80 @@ export async function getLatestPlayPerStation() {
 
       const play = data[0] as any;
       return {
-        station: station.slug,
-        title: play.songs.title,
-        artist: play.songs.artists.name,
-        time_played: play.time_played,
+        station: station.slug as string,
+        title: play.songs.title as string,
+        artist: play.songs.artists.name as string,
+        time_played: play.time_played as string,
       };
     })
   );
 
-  return results.filter(Boolean) as {
-    station: string;
-    title: string;
-    artist: string;
-    time_played: string;
-  }[];
+  return results.filter((r) => r !== null);
 }
 
-export async function getArtistCount(query?: string) {
-  let q = getSupabase()
-    .from("artists")
-    .select("*", { count: "exact", head: true });
-
-  if (query) {
-    q = q.ilike("name", `%${query}%`);
-  }
-
-  const { count, error } = await q;
-  if (error) throw error;
-  return count ?? 0;
-}
-
-export async function searchArtists(
-  query: string | undefined,
-  offset: number,
-  limit: number
-) {
-  let q = getSupabase()
-    .from("artists")
-    .select("id, name")
-    .order("name", { ascending: true })
-    .range(offset, offset + limit - 1);
-
-  if (query) {
-    q = q.ilike("name", `%${query}%`);
-  }
-
-  const { data, error } = await q;
-  if (error) throw error;
-  return data;
-}
-
-async function findArtistId(artistName: string): Promise<number | null> {
-  const { data: artist, error: artistError } = await getSupabase()
-    .from("artists")
-    .select("id")
-    .eq("name", artistName)
-    .single();
-
-  if (artistError) {
-    if (artistError.code === "PGRST116") return null;
-    throw artistError;
-  }
-  return artist.id;
-}
-
-async function findSongId(
-  artistName: string,
-  songTitle: string
-): Promise<number | null> {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
-  const { data: song, error } = await getSupabase()
-    .from("songs")
-    .select("id")
-    .eq("artist_id", artistId)
-    .ilike("title", songTitle)
-    .limit(1)
-    .single();
-
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw error;
-  }
-  return song.id;
-}
-
-export async function getSongPlayCount(artistName: string, songTitle: string) {
-  const songId = await findSongId(artistName, songTitle);
-  if (songId === null) return null;
-
-  const { count, error } = await getSupabase()
-    .from("plays")
-    .select("*", { count: "exact", head: true })
-    .eq("song_id", songId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
-
-  if (error) throw error;
-  return count ?? 0;
-}
-
-export async function getSongPlays(
-  artistName: string,
-  songTitle: string,
-  offset: number = 0,
-  limit: number = 50
-) {
-  const songId = await findSongId(artistName, songTitle);
-  if (songId === null) return null;
-
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
-      `
-      id,
-      time_played,
-      stations!inner ( slug )
-    `
-    )
-    .eq("song_id", songId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false)
-    .order("time_played", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) throw error;
-
-  return data.map((play: any) => ({
-    id: play.id,
-    time_played: play.time_played,
-    station: play.stations.slug,
-  }));
-}
-
-export async function getSongPlayRange(
-  artistName: string,
-  songTitle: string
-): Promise<{ firstPlayed: string; lastPlayed: string } | null> {
-  const songId = await findSongId(artistName, songTitle);
-  if (songId === null) return null;
-
-  const edge = (ascending: boolean) =>
-    getSupabase()
-      .from("plays")
-      .select("time_played")
-      .eq("song_id", songId)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-      .order("time_played", { ascending })
-      .limit(1);
-
-  const [first, last] = await Promise.all([edge(true), edge(false)]);
-  if (first.error) throw first.error;
-  if (last.error) throw last.error;
-  if (!first.data?.length || !last.data?.length) return null;
-
-  return {
-    firstPlayed: first.data[0].time_played,
-    lastPlayed: last.data[0].time_played,
-  };
-}
-
-export async function getSongStationBreakdown(
-  artistName: string,
-  songTitle: string
-): Promise<{ station: string; playCount: number }[] | null> {
-  const songId = await findSongId(artistName, songTitle);
-  if (songId === null) return null;
-
-  const { data, error } = await getSupabase().rpc("song_station_breakdown", {
-    p_song_id: songId,
-  });
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    station: row.slug,
-    playCount: row.play_count,
-  }));
-}
-
-/** Plays per Faroese local date, e.g. { "2025-10-12": 3 }. */
-export async function getSongDailyPlays(
-  artistName: string,
-  songTitle: string
-): Promise<Record<string, number> | null> {
-  const songId = await findSongId(artistName, songTitle);
-  if (songId === null) return null;
-
-  const { data, error } = await getSupabase().rpc("song_daily_plays", {
-    p_song_id: songId,
-  });
-
-  if (error) throw error;
-  return (data ?? {}) as Record<string, number>;
-}
-
-/** Plays per Faroese local date across all of an artist's songs. */
-export async function getArtistDailyPlays(
-  artistName: string
-): Promise<Record<string, number> | null> {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
-  const { data, error } = await getSupabase().rpc("artist_daily_plays", {
-    p_artist_id: artistId,
-  });
-
-  if (error) throw error;
-  return (data ?? {}) as Record<string, number>;
-}
-
-export async function getArtistStationBreakdown(
-  artistName: string
-): Promise<{ station: string; playCount: number }[] | null> {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
-  const { data, error } = await getSupabase().rpc("artist_station_breakdown", {
-    p_artist_id: artistId,
-  });
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    station: row.slug,
-    playCount: row.play_count,
-  }));
-}
-
-export async function getArtistSongsOverview(
-  artistName: string
-): Promise<
-  | {
-      songId: number;
-      title: string;
-      playCount: number;
-      firstPlayed: string;
-      lastPlayed: string;
-    }[]
-  | null
-> {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
-  const { data, error } = await getSupabase().rpc("artist_songs_overview", {
-    p_artist_id: artistId,
-  });
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    songId: row.song_id,
-    title: row.title,
-    playCount: row.play_count,
-    firstPlayed: row.first_played,
-    lastPlayed: row.last_played,
-  }));
-}
-
-export async function getArtistPlayCount(artistName: string) {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
-  const { count, error } = await getSupabase()
-    .from("plays")
-    .select("*, songs!inner(*)", { count: "exact", head: true })
-    .eq("songs.artist_id", artistId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
-
-  if (error) throw error;
-  return count ?? 0;
-}
-
-export async function getArtistPlays(
-  artistName: string,
-  offset: number = 0,
-  limit: number = 50,
-  { oldestFirst = false }: { oldestFirst?: boolean } = {}
-) {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
-      `
-      id,
-      time_played,
-      songs!inner (
-        title,
-        artist_id,
-        artists!inner ( name )
-      ),
-      stations!inner ( slug )
-    `
-    )
-    .eq("songs.artist_id", artistId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false)
-    .order("time_played", { ascending: oldestFirst })
-    .range(offset, offset + limit - 1);
-
-  if (error) throw error;
-
-  return data.map((play: any) => ({
-    id: play.id,
-    artist: (play.songs as any).artists.name,
-    title: (play.songs as any).title,
-    time_played: play.time_played,
-    station: (play.stations as any).slug,
-  }));
-}
+// ---------------------------------------------------------------------------
+// Stations
 
 export async function getAllStationSlugs() {
+  "use cache";
+  cacheLife("stats");
+
   const { data, error } = await getSupabase()
     .from("stations")
     .select("slug")
     .order("slug");
 
   if (error) throw error;
-  return (data ?? []).map((s) => s.slug);
-}
-
-async function resolveStationIds(slugs: string[]): Promise<number[]> {
-  const { data, error } = await getSupabase()
-    .from("stations")
-    .select("id")
-    .in("slug", slugs);
-
-  if (error) throw error;
-  return (data ?? []).map((s) => s.id);
-}
-
-/** A calendar month in Faroese time, as UTC timestamps [start, end). */
-function faroeMonthRange(year: number, month: number) {
-  const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
-  return {
-    start: faroeMonthStart(year, month),
-    end: faroeMonthStart(next.year, next.month),
-  };
-}
-
-export async function getTopArtistsForMonth(
-  year: number,
-  month: number,
-  limit: number = 10,
-  stationSlugs?: string[]
-): Promise<{ name: string; playCount: number }[]> {
-  const { start: startOfMonth, end: startOfNextMonth } = faroeMonthRange(
-    year,
-    month
-  );
-
-  const stationIds =
-    stationSlugs && stationSlugs.length > 0
-      ? await resolveStationIds(stationSlugs)
-      : null;
-
-  const { data, error } = await getSupabase().rpc("top_artists_for_month", {
-    start_date: startOfMonth,
-    end_date: startOfNextMonth,
-    result_limit: limit,
-    filter_station_ids: stationIds,
-  });
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    name: row.name,
-    playCount: row.play_count,
-  }));
-}
-
-export async function getTopSongsForMonth(
-  year: number,
-  month: number,
-  limit: number = 10,
-  stationSlugs?: string[]
-): Promise<{ title: string; artist: string; playCount: number }[]> {
-  const { start: startOfMonth, end: startOfNextMonth } = faroeMonthRange(
-    year,
-    month
-  );
-
-  const stationIds =
-    stationSlugs && stationSlugs.length > 0
-      ? await resolveStationIds(stationSlugs)
-      : null;
-
-  const { data, error } = await getSupabase().rpc("top_songs_for_month", {
-    start_date: startOfMonth,
-    end_date: startOfNextMonth,
-    result_limit: limit,
-    filter_station_ids: stationIds,
-  });
-
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    title: row.title,
-    artist: row.artist_name,
-    playCount: row.play_count,
-  }));
+  return (data ?? []).map((s) => s.slug as string);
 }
 
 export async function getStations() {
-  const { data: stations, error } = await getSupabase()
-    .from("stations")
-    .select("id, slug");
+  "use cache";
+  cacheLife("live");
 
-  if (error) throw error;
-  if (!stations) return [];
+  const [stats, latest] = await Promise.all([
+    getStationStats(),
+    getLatestPlayPerStation(),
+  ]);
 
-  const results = await Promise.all(
-    stations.map(async (station) => {
-      const [countResult, latestResult] = await Promise.all([
-        getSupabase()
-          .from("plays")
-          .select("*", { count: "exact", head: true })
-          .eq("station_id", station.id)
-          .eq("is_deleted", false)
-          .eq("is_likely_not_music", false),
-        getSupabase()
-          .from("plays")
-          .select(
-            `
-            time_played,
-            songs!inner (
-              title,
-              artists!inner ( name )
-            )
-          `
-          )
-          .eq("station_id", station.id)
-          .eq("is_deleted", false)
-          .eq("is_likely_not_music", false)
-          .order("time_played", { ascending: false })
-          .limit(1),
-      ]);
-
-      if (countResult.error) throw countResult.error;
-      if (latestResult.error) throw latestResult.error;
-
-      const latest = latestResult.data?.[0] as any;
-      return {
-        slug: station.slug,
-        playCount: countResult.count ?? 0,
-        latestSong: latest
-          ? {
-              title: latest.songs.title,
-              artist: latest.songs.artists.name,
-              time_played: latest.time_played,
-            }
-          : null,
-      };
-    })
-  );
-
-  return results;
+  return stats.map((station) => {
+    const play = latest.find((l) => l.station === station.slug);
+    return {
+      slug: station.slug,
+      playCount: station.playCount,
+      latestSong: play
+        ? { title: play.title, artist: play.artist, time_played: play.time_played }
+        : null,
+    };
+  });
 }
 
-export async function getStationPlayCount(slug: string) {
-  const { data: station } = await getSupabase()
-    .from("stations")
-    .select("id")
+export async function getStation(slug: string) {
+  "use cache";
+  cacheLife("stats");
+
+  const { data, error } = await getSupabase()
+    .from("station_play_stats")
+    .select("station_id, slug, play_count")
     .eq("slug", slug)
-    .single();
-
-  if (!station) return null;
-
-  const { count, error } = await getSupabase()
-    .from("plays")
-    .select("*", { count: "exact", head: true })
-    .eq("station_id", station.id)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false);
+    .maybeSingle();
 
   if (error) throw error;
-  return count ?? 0;
+  if (!data) return null;
+  return {
+    id: data.station_id as number,
+    slug: data.slug as string,
+    playCount: data.play_count as number,
+  };
 }
 
 export async function getStationPlays(
-  slug: string,
-  offset: number = 0,
-  limit: number = 50
+  stationId: number,
+  offset: number,
+  limit: number
 ) {
-  const { data: station } = await getSupabase()
-    .from("stations")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-
-  if (!station) return null;
+  "use cache";
+  cacheLife("live");
 
   const { data, error } = await getSupabase()
     .from("plays")
@@ -611,11 +250,10 @@ export async function getStationPlays(
       songs!inner (
         title,
         artists!inner ( name )
-      ),
-      stations!inner ( slug )
+      )
     `
     )
-    .eq("station_id", station.id)
+    .eq("station_id", stationId)
     .eq("is_deleted", false)
     .eq("is_likely_not_music", false)
     .order("time_played", { ascending: false })
@@ -624,38 +262,24 @@ export async function getStationPlays(
   if (error) throw error;
 
   return data.map((play: any) => ({
-    id: play.id,
-    artist: play.songs.artists.name,
-    title: play.songs.title,
-    time_played: play.time_played,
-    station: play.stations.slug,
+    id: play.id as number,
+    artist: play.songs.artists.name as string,
+    title: play.songs.title as string,
+    time_played: play.time_played as string,
   }));
 }
 
-export async function getArtistPlayCounts(
-  artistIds: number[]
-): Promise<Record<number, number>> {
-  if (artistIds.length === 0) return {};
-
-  const { data, error } = await getSupabase().rpc("artist_play_counts", {
-    p_artist_ids: artistIds,
-  });
-
-  if (error) throw error;
-
-  const counts: Record<number, number> = {};
-  for (const row of data ?? []) {
-    counts[row.artist_id] = row.play_count;
-  }
-
-  return counts;
-}
+// ---------------------------------------------------------------------------
+// Artists
 
 export async function getTopArtistsAllTime(
   offset: number,
   limit: number,
   search?: string
 ): Promise<{ id: number; name: string; playCount: number }[]> {
+  "use cache";
+  cacheLife("stats");
+
   const { data, error } = await getSupabase().rpc("top_artists_all_time", {
     p_limit: limit,
     p_offset: offset,
@@ -673,6 +297,9 @@ export async function getTopArtistsAllTime(
 export async function getArtistCountWithPlays(
   search?: string
 ): Promise<number> {
+  "use cache";
+  cacheLife("stats");
+
   const { data, error } = await getSupabase().rpc("artist_count_with_plays", {
     p_search: search || null,
   });
@@ -681,16 +308,271 @@ export async function getArtistCountWithPlays(
   return (data as number) ?? 0;
 }
 
-export async function getEarliestPlayDate() {
+async function findArtistId(artistName: string): Promise<number | null> {
   const { data, error } = await getSupabase()
-    .from("plays")
-    .select("time_played")
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false)
-    .order("time_played", { ascending: true })
-    .limit(1);
+    .from("artists")
+    .select("id")
+    .eq("name", artistName)
+    .maybeSingle();
 
   if (error) throw error;
-  if (!data || data.length === 0) return null;
-  return data[0].time_played;
+  return data?.id ?? null;
+}
+
+async function getArtistPlays(
+  artistId: number,
+  limit: number,
+  { oldestFirst = false }: { oldestFirst?: boolean } = {}
+) {
+  const { data, error } = await getSupabase()
+    .from("plays")
+    .select(
+      `
+      id,
+      time_played,
+      songs!inner ( title, artist_id ),
+      stations!inner ( slug )
+    `
+    )
+    .eq("songs.artist_id", artistId)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false)
+    .order("time_played", { ascending: oldestFirst })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return data.map((play: any) => ({
+    id: play.id as number,
+    title: play.songs.title as string,
+    time_played: play.time_played as string,
+    station: play.stations.slug as string,
+  }));
+}
+
+async function getArtistPlayCount(artistId: number) {
+  const { count, error } = await getSupabase()
+    .from("plays")
+    .select("id, songs!inner(artist_id)", { count: "exact", head: true })
+    .eq("songs.artist_id", artistId)
+    .eq("is_deleted", false)
+    .eq("is_likely_not_music", false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function rpcRows<T>(fn: string, args: Record<string, unknown>) {
+  const { data, error } = await getSupabase().rpc(fn, args);
+  if (error) throw error;
+  return (data ?? []) as T;
+}
+
+/** Everything the artist page shows, or null if there's no such artist. */
+export async function getArtistPage(artistName: string) {
+  "use cache";
+  cacheLife("live");
+
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+
+  const [plays, firstPlays, totalCount, stations, songs, dailyPlays] =
+    await Promise.all([
+      getArtistPlays(artistId, 10),
+      getArtistPlays(artistId, 1, { oldestFirst: true }),
+      getArtistPlayCount(artistId),
+      rpcRows<any[]>("artist_station_breakdown", { p_artist_id: artistId }),
+      rpcRows<any[]>("artist_songs_overview", { p_artist_id: artistId }),
+      rpcRows<Record<string, number>>("artist_daily_plays", {
+        p_artist_id: artistId,
+      }),
+    ]);
+
+  return {
+    plays,
+    firstPlay: firstPlays[0] ?? null,
+    totalCount,
+    stationBreakdown: stations.map((row) => ({
+      station: row.slug as string,
+      playCount: row.play_count as number,
+    })),
+    songs: songs.map((row) => ({
+      songId: row.song_id as number,
+      title: row.title as string,
+      playCount: row.play_count as number,
+      firstPlayed: row.first_played as string,
+      lastPlayed: row.last_played as string,
+    })),
+    /** Plays per Faroese local date, e.g. { "2025-10-12": 3 } */
+    dailyPlays,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Songs
+
+async function findSongId(
+  artistName: string,
+  songTitle: string
+): Promise<number | null> {
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+
+  const { data, error } = await getSupabase()
+    .from("songs")
+    .select("id")
+    .eq("artist_id", artistId)
+    .ilike("title", escapeLike(songTitle))
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
+/** Everything the song page shows, or null if there's no such song. */
+export async function getSongPage(artistName: string, songTitle: string) {
+  "use cache";
+  cacheLife("live");
+
+  const songId = await findSongId(artistName, songTitle);
+  if (songId === null) return null;
+
+  const [recent, first, count, stations, dailyPlays] = await Promise.all([
+    getSupabase()
+      .from("plays")
+      .select("id, time_played, stations!inner ( slug )")
+      .eq("song_id", songId)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+      .order("time_played", { ascending: false })
+      .limit(10),
+    getSupabase()
+      .from("plays")
+      .select("time_played")
+      .eq("song_id", songId)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false)
+      .order("time_played", { ascending: true })
+      .limit(1),
+    getSupabase()
+      .from("plays")
+      .select("id", { count: "exact", head: true })
+      .eq("song_id", songId)
+      .eq("is_deleted", false)
+      .eq("is_likely_not_music", false),
+    rpcRows<any[]>("song_station_breakdown", { p_song_id: songId }),
+    rpcRows<Record<string, number>>("song_daily_plays", { p_song_id: songId }),
+  ]);
+
+  if (recent.error) throw recent.error;
+  if (first.error) throw first.error;
+  if (count.error) throw count.error;
+
+  const plays = recent.data.map((play: any) => ({
+    id: play.id as number,
+    time_played: play.time_played as string,
+    station: play.stations.slug as string,
+  }));
+
+  return {
+    plays,
+    totalCount: count.count ?? 0,
+    playRange:
+      plays.length > 0 && first.data.length > 0
+        ? {
+            firstPlayed: first.data[0].time_played as string,
+            lastPlayed: plays[0].time_played,
+          }
+        : null,
+    stationBreakdown: stations.map((row) => ({
+      station: row.slug as string,
+      playCount: row.play_count as number,
+    })),
+    /** Plays per Faroese local date, e.g. { "2025-10-12": 3 } */
+    dailyPlays,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Charts
+
+/** A calendar month in Faroese time, as UTC timestamps [start, end). */
+function faroeMonthRange(year: number, month: number) {
+  const next =
+    month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+  return {
+    start: faroeMonthStart(year, month),
+    end: faroeMonthStart(next.year, next.month),
+  };
+}
+
+/** Charts for a finished month never change, so keep them much longer. */
+function cacheChart(end: string) {
+  if (new Date(end).getTime() <= Date.now()) {
+    cacheLife("archive");
+  } else {
+    cacheLife("stats");
+  }
+}
+
+async function resolveStationIds(slugs?: string[]) {
+  if (!slugs || slugs.length === 0) return null;
+
+  const { data, error } = await getSupabase()
+    .from("stations")
+    .select("id")
+    .in("slug", slugs);
+
+  if (error) throw error;
+  return (data ?? []).map((s) => s.id as number);
+}
+
+export async function getTopArtistsForMonth(
+  year: number,
+  month: number,
+  limit: number = 10,
+  stationSlugs?: string[]
+): Promise<{ name: string; playCount: number }[]> {
+  "use cache";
+  const { start, end } = faroeMonthRange(year, month);
+  cacheChart(end);
+
+  const { data, error } = await getSupabase().rpc("top_artists_for_month", {
+    start_date: start,
+    end_date: end,
+    result_limit: limit,
+    filter_station_ids: await resolveStationIds(stationSlugs),
+  });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    name: row.name,
+    playCount: row.play_count,
+  }));
+}
+
+export async function getTopSongsForMonth(
+  year: number,
+  month: number,
+  limit: number = 10,
+  stationSlugs?: string[]
+): Promise<{ title: string; artist: string; playCount: number }[]> {
+  "use cache";
+  const { start, end } = faroeMonthRange(year, month);
+  cacheChart(end);
+
+  const { data, error } = await getSupabase().rpc("top_songs_for_month", {
+    start_date: start,
+    end_date: end,
+    result_limit: limit,
+    filter_station_ids: await resolveStationIds(stationSlugs),
+  });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    title: row.title,
+    artist: row.artist_name,
+    playCount: row.play_count,
+  }));
 }

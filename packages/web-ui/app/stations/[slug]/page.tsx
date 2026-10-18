@@ -1,9 +1,10 @@
 import { z } from "zod";
 import Link from "next/link";
+import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import {
+  getStation,
   getStationPlays,
-  getStationPlayCount,
   getTotalPlayCount,
 } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
@@ -31,23 +32,27 @@ export default async function StationDetailPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
   const { slug: rawSlug } = await params;
   const slug = decodeURIComponent(rawSlug);
   const parsed = paramsSchema.safeParse(await searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, allPlaysCount, latest] = await Promise.all([
-    getStationPlays(slug, offset, PAGE_SIZE),
-    getStationPlayCount(slug),
-    getTotalPlayCount(),
-    page === 0 ? null : getStationPlays(slug, 0, 1),
-  ]);
-
-  if (plays === null || totalCount === null) {
+  const station = await getStation(slug);
+  if (station === null) {
     notFound();
   }
 
+  const [plays, allPlaysCount, latest] = await Promise.all([
+    getStationPlays(station.id, offset, PAGE_SIZE),
+    getTotalPlayCount(),
+    page === 0 ? null : getStationPlays(station.id, 0, 1),
+  ]);
+
+  const totalCount = station.playCount;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const latestPlay = page === 0 ? plays[0] : latest?.[0];
 
@@ -135,5 +140,3 @@ export default async function StationDetailPage({
     </>
   );
 }
-
-export const dynamic = "force-dynamic";

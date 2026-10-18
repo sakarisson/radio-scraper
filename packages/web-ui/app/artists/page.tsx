@@ -1,5 +1,6 @@
 import { z } from "zod";
 import Link from "next/link";
+import { connection } from "next/server";
 import {
   getTopArtistsForMonth,
   getTopArtistsAllTime,
@@ -26,6 +27,9 @@ const paramsSchema = z
   .optional();
 
 export default async function ArtistsPage(props: Props) {
+  // Render per request: the page shows times relative to now. The data
+  // itself is cached.
+  await connection();
   const parsed = paramsSchema.safeParse(await props.searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const query = parsed.success ? parsed.data?.q?.trim() || undefined : undefined;
@@ -132,5 +136,3 @@ export default async function ArtistsPage(props: Props) {
     </>
   );
 }
-
-export const dynamic = "force-dynamic";
