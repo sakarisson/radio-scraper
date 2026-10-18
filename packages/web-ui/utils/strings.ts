@@ -29,6 +29,10 @@ export const strings = {
   title: "Title",
   firstPlayed: "First played",
   playHistory: "Play history",
+  playsPerDay: "Plays per day",
+  playsPerDayLegend: "Plays per day:",
+  playsInPastYear: (plays: string, singular: boolean) =>
+    `${plays} ${singular ? "play" : "plays"} in the past year`,
   previousPage: "← Previous",
   nextPage: "Next →",
   newerPlays: "← Newer plays",

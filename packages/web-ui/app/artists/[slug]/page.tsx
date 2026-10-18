@@ -6,6 +6,7 @@ import {
   getArtistPlayCount,
   getArtistStationBreakdown,
   getArtistSongsOverview,
+  getArtistDailyPlays,
 } from "@/utils/database";
 import format from "date-fns/format";
 import * as styles from "@/styles/artist-detail.css";
@@ -17,6 +18,7 @@ import { Pagination } from "@/app/components/Pagination";
 import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
+import { PlayCalendar } from "@/app/components/PlayCalendar";
 
 const PAGE_SIZE = 50;
 
@@ -45,12 +47,13 @@ export default async function ArtistPage({
   const sort = parsed.success ? parsed.data?.sort ?? "recent" : "recent";
   const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, stationBreakdown, songsOverview] =
+  const [plays, totalCount, stationBreakdown, songsOverview, dailyPlays] =
     await Promise.all([
       getArtistPlays(artistName, offset, PAGE_SIZE),
       getArtistPlayCount(artistName),
       getArtistStationBreakdown(artistName),
       getArtistSongsOverview(artistName),
+      getArtistDailyPlays(artistName),
     ]);
 
   if (plays === null || totalCount === null) {
@@ -93,6 +96,12 @@ export default async function ArtistPage({
           />
         </div>
       </section>
+
+      {dailyPlays && (
+        <section className={ui.section.sm}>
+          <PlayCalendar daily={dailyPlays} scale="artist" />
+        </section>
+      )}
 
       {stationBreakdown && stationBreakdown.length > 0 && (
         <section className={ui.section.sm}>
