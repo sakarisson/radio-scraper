@@ -1,9 +1,7 @@
 export const strings = {
   siteName: "Faroese Radio",
-  siteDescription:
-    "A historical record of songs played on Faroese radio stations",
-  homeTitle:
-    "A historical record of every song played on Faroese radio stations.",
+  siteDescription: "An overview of songs played on Faroese radio stations",
+  homeTitle: "An overview of songs played on Faroese radio stations.",
   lastPlayed: "Last played",
   lastPlayedHint: "Most recent song on each station",
   recentPlays: "Recent plays",
