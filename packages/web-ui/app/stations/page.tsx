@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { getEarliestPlayDate, getStations } from "@/utils/database";
-import format from "date-fns/format";
 import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { countWord, formatNumber, formatShare, timeAgo } from "@/utils/format";
+import {
+  countWord,
+  formatNumber,
+  formatShare,
+  monthYear,
+  timeAgo,
+} from "@/utils/format";
 import { StationDot } from "../components/Station";
 import { SplitBar } from "../components/StationSplit";
 
@@ -16,7 +21,7 @@ export default async function StationsPage() {
 
   const stations = [...unsorted].sort((a, b) => b.playCount - a.playCount);
   const total = stations.reduce((sum, s) => sum + s.playCount, 0);
-  const since = earliest ? format(new Date(earliest), "MMMM yyyy") : "the start";
+  const since = earliest ? monthYear(earliest) : "the start";
 
   return (
     <section className={ui.intro.page}>

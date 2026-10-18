@@ -8,23 +8,25 @@ import {
   getArtistSongsOverview,
   getArtistDailyPlays,
 } from "@/utils/database";
-import format from "date-fns/format";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { formatNumber, playTime, relativeTime } from "@/utils/format";
+import {
+  formatNumber,
+  fullDateTime,
+  playTime,
+  relativeTime,
+} from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
-import { Pagination } from "@/app/components/Pagination";
 import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
 
-const PAGE_SIZE = 50;
+const RECENT_PLAYS = 10;
 
 const paramsSchema = z
   .object({
-    page: z.string().regex(/^\d+$/).transform(Number).optional(),
     sort: z.enum(["recent", "plays"]).optional(),
   })
   .optional();
@@ -43,42 +45,42 @@ export default async function ArtistPage({
 }) {
   const artistName = decodeURIComponent(params.slug);
   const parsed = paramsSchema.safeParse(searchParams);
-  const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const sort = parsed.success ? parsed.data?.sort ?? "recent" : "recent";
-  const offset = page * PAGE_SIZE;
 
-  const [plays, totalCount, stationBreakdown, songsOverview, dailyPlays] =
-    await Promise.all([
-      getArtistPlays(artistName, offset, PAGE_SIZE),
-      getArtistPlayCount(artistName),
-      getArtistStationBreakdown(artistName),
-      getArtistSongsOverview(artistName),
-      getArtistDailyPlays(artistName),
-    ]);
+  const [
+    plays,
+    firstPlays,
+    totalCount,
+    stationBreakdown,
+    songsOverview,
+    dailyPlays,
+  ] = await Promise.all([
+    getArtistPlays(artistName, 0, RECENT_PLAYS),
+    getArtistPlays(artistName, 0, 1, { oldestFirst: true }),
+    getArtistPlayCount(artistName),
+    getArtistStationBreakdown(artistName),
+    getArtistSongsOverview(artistName),
+    getArtistDailyPlays(artistName),
+  ]);
 
   if (plays === null || totalCount === null) {
     notFound();
   }
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const songs = [...(songsOverview ?? [])].sort((a, b) =>
     sort === "plays"
       ? b.playCount - a.playCount
       : new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime()
   );
+  const firstPlay = firstPlays?.[0];
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
   const artistHref = `/artists/${params.slug}`;
 
   function sortHref(key: (typeof sortOptions)[number]["key"]) {
     const qs = new URLSearchParams();
     if (key !== "recent") qs.set("sort", key);
-    if (page > 0) qs.set("page", String(page));
     const s = qs.toString();
     return s ? `${artistHref}?${s}` : artistHref;
-  }
-
-  function fullDate(dateStr: string) {
-    return format(new Date(dateStr), "MMM d, yyyy 'at' HH:mm");
   }
 
   return (
@@ -95,6 +97,24 @@ export default async function ArtistPage({
             ]}
           />
         </div>
+        {firstPlay && (
+          <p className={styles.firstPlay}>
+            <span className={ui.muted}>{strings.firstPlay}</span>
+            <Link
+              href={`${artistHref}/${encodeURIComponent(firstPlay.title)}`}
+              className={styles.firstPlaySong}
+            >
+              {firstPlay.title}
+            </Link>
+            <StationLink station={firstPlay.station} />
+            <span
+              className={ui.muted}
+              title={relativeTime(firstPlay.time_played)}
+            >
+              {fullDateTime(firstPlay.time_played)}
+            </span>
+          </p>
+        )}
       </section>
 
       {dailyPlays && (
@@ -157,13 +177,13 @@ export default async function ArtistPage({
               </div>
               <span
                 className={`${ui.muted} ${styles.hideMedium}`}
-                title={fullDate(firstPlayed)}
+                title={fullDateTime(firstPlayed)}
               >
                 {relativeTime(firstPlayed)}
               </span>
               <span
                 className={`${ui.muted} ${styles.hideNarrow}`}
-                title={fullDate(lastPlayed)}
+                title={fullDateTime(lastPlayed)}
               >
                 {relativeTime(lastPlayed)}
               </span>
@@ -188,14 +208,6 @@ export default async function ArtistPage({
             <span className={styles.playWhen}>{playTime(time_played)}</span>
           </div>
         ))}
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          basePath={artistHref}
-          extraParams={{ sort: sort === "recent" ? undefined : sort }}
-          prevLabel={strings.newerPlays}
-          nextLabel={strings.olderPlays}
-        />
       </section>
     </>
   );

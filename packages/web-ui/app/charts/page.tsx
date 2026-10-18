@@ -5,8 +5,7 @@ import { getAllStationSlugs } from "@/utils/database";
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import format from "date-fns/format";
-import { getLastCompletedMonth } from "@/utils/months";
+import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
 import { StationDot } from "../components/Station";
 import { vars } from "@/styles/theme.css";
 import { ChartResults } from "./ChartResults";
@@ -79,7 +78,7 @@ export default async function ChartsPage({
     next.year > lastCompleted.year ||
     (next.year === lastCompleted.year && next.month > lastCompleted.month);
 
-  const monthDisplay = format(new Date(year, month - 1), "MMMM yyyy");
+  const monthDisplay = `${MONTH_NAMES[month - 1]} ${year}`;
 
   const currentStationsParam = selectedSlugs?.length
     ? selectedSlugs.join(",")

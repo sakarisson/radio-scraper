@@ -1,10 +1,14 @@
+import { faroeParts } from "./time";
+
+/** The current month in Faroese time. */
+export function getCurrentMonth() {
+  const { year, month } = faroeParts(new Date());
+  return { year, month };
+}
+
 export function getLastCompletedMonth() {
-  const now = new Date();
-  const month = now.getMonth(); // 0-indexed, so this is already "previous month"
-  if (month === 0) {
-    return { year: now.getFullYear() - 1, month: 12 };
-  }
-  return { year: now.getFullYear(), month };
+  const { year, month } = getCurrentMonth();
+  return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }
 
 export const MONTH_NAMES = [

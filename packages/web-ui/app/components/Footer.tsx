@@ -1,13 +1,11 @@
 import { getEarliestPlayDate } from "@/utils/database";
 import * as styles from "@/styles/layout.css";
 import { strings } from "@/utils/strings";
-import format from "date-fns/format";
+import { monthYear } from "@/utils/format";
 
 export async function Footer() {
   const earliest = await getEarliestPlayDate();
-  const dateStr = earliest
-    ? format(new Date(earliest), "MMMM yyyy")
-    : "the beginning";
+  const dateStr = earliest ? monthYear(earliest) : "the beginning";
 
   return (
     <footer className={styles.footer}>

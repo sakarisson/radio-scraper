@@ -28,7 +28,7 @@ export const strings = {
   sortMostPlayed: "Most played",
   title: "Title",
   firstPlayed: "First played",
-  playHistory: "Play history",
+  firstPlay: "First play",
   playsPerDay: "Plays per day",
   playsPerDayLegend: "Plays per day:",
   playsInPastYear: (plays: string, singular: boolean) =>
