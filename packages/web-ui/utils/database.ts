@@ -306,6 +306,21 @@ export async function getSongDailyPlays(
   return (data ?? {}) as Record<string, number>;
 }
 
+/** Plays per Faroese local date across all of an artist's songs. */
+export async function getArtistDailyPlays(
+  artistName: string
+): Promise<Record<string, number> | null> {
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+
+  const { data, error } = await getSupabase().rpc("artist_daily_plays", {
+    p_artist_id: artistId,
+  });
+
+  if (error) throw error;
+  return (data ?? {}) as Record<string, number>;
+}
+
 export async function getArtistStationBreakdown(
   artistName: string
 ): Promise<{ station: string; playCount: number }[] | null> {

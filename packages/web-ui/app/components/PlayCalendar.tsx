@@ -12,17 +12,28 @@ const WEEKDAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
 
 type Level = keyof typeof styles.cell;
 
-// Fixed thresholds (rather than relative to each song's busiest day) so that
-// colors mean the same thing on every song page.
-const LEVELS: { level: Level; label: string; min: number }[] = [
-  { level: 4, label: "5+", min: 5 },
-  { level: 3, label: "3–4", min: 3 },
-  { level: 2, label: "2", min: 2 },
-  { level: 1, label: "1", min: 1 },
-];
+type Levels = { level: Level; label: string; min: number }[];
 
-function levelFor(count: number): Level {
-  return LEVELS.find((l) => count >= l.min)?.level ?? 0;
+// Fixed thresholds (rather than relative to each page's busiest day) so that
+// colors mean the same thing on every song page, and on every artist page.
+// Artists get a higher scale since their plays add up across all their songs.
+const SCALES = {
+  song: [
+    { level: 4, label: "5+", min: 5 },
+    { level: 3, label: "3–4", min: 3 },
+    { level: 2, label: "2", min: 2 },
+    { level: 1, label: "1", min: 1 },
+  ],
+  artist: [
+    { level: 4, label: "10+", min: 10 },
+    { level: 3, label: "6–9", min: 6 },
+    { level: 2, label: "3–5", min: 3 },
+    { level: 1, label: "1–2", min: 1 },
+  ],
+} satisfies Record<string, Levels>;
+
+function levelFor(levels: Levels, count: number): Level {
+  return levels.find((l) => count >= l.min)?.level ?? 0;
 }
 
 /** "YYYY-MM-DD" for an instant, as a date in the Faroe Islands. */
@@ -50,10 +61,17 @@ function tooltip(count: number, day: Date) {
 }
 
 /**
- * GitHub-style calendar of how often a song was played each day over the
- * past year, one column per week (Monday to Sunday), ending today.
+ * GitHub-style calendar of how often a song or artist was played each day over
+ * the past year, one column per week (Monday to Sunday), ending today.
  */
-export function PlayCalendar({ daily }: { daily: Record<string, number> }) {
+export function PlayCalendar({
+  daily,
+  scale = "song",
+}: {
+  daily: Record<string, number>;
+  scale?: keyof typeof SCALES;
+}) {
+  const levels: Levels = SCALES[scale];
   const today = faroeDate(new Date());
   const end = fromKey(today);
   const first = new Date(end);
@@ -73,7 +91,7 @@ export function PlayCalendar({ daily }: { daily: Record<string, number> }) {
     const inRange = key >= firstDay && key <= today;
     const count = daily[key] ?? 0;
     if (inRange) total += count;
-    days.push({ key, date, count, level: inRange ? levelFor(count) : "none" });
+    days.push({ key, date, count, level: inRange ? levelFor(levels, count) : "none" });
     if (inRange && (date.getUTCDate() === 1 || key === firstDay)) {
       monthColumns.push({
         label: MONTHS[date.getUTCMonth()],
@@ -137,7 +155,7 @@ export function PlayCalendar({ daily }: { daily: Record<string, number> }) {
       </div>
       <div className={styles.legend}>
         <span>{strings.playsPerDayLegend}</span>
-        {[...LEVELS].reverse().map(({ level, label }) => (
+        {[...levels].reverse().map(({ level, label }) => (
           <span key={level} className={styles.legendItem}>
             <span className={`${styles.cell[level]} ${styles.legendSwatch}`} />
             {label}
