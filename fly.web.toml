@@ -13,6 +13,9 @@ primary_region = "ams"
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
+  # Keep one machine warm so visitors never wait for a cold start, and so the
+  # in-memory data cache survives quiet periods
+  min_machines_running = 1
 
   [[http_service.checks]]
     path = "/healthz"
@@ -21,4 +24,4 @@ primary_region = "ams"
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "256mb"
+  memory = "512mb"
