@@ -233,40 +233,90 @@ export async function getStation(slug: string) {
   };
 }
 
+type StationPlay = {
+  id: number;
+  artist: string;
+  title: string;
+  time_played: string;
+};
+
+async function fetchStationPlaysPage(
+  stationId: number,
+  limit: number,
+  cursor: { before?: number; after?: number }
+): Promise<StationPlay[]> {
+  const { data, error } = await getSupabase().rpc("station_plays_page", {
+    p_station_id: stationId,
+    p_limit: limit,
+    p_before_id: cursor.before ?? null,
+    p_after_id: cursor.after ?? null,
+  });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    artist: row.artist_name,
+    title: row.title,
+    time_played: row.time_played,
+  }));
+}
+
+/**
+ * One page of a station's plays, newest first. Pages are addressed by the
+ * play just past their edge rather than by page number, so that old pages
+ * are as cheap as new ones:
+ *   - no cursor: the newest plays
+ *   - before: the plays just older than that play ("Older plays")
+ *   - after: the plays just newer than that play ("Newer plays")
+ * A cursor that leads nowhere falls back to the newest plays.
+ */
 export async function getStationPlays(
   stationId: number,
-  offset: number,
-  limit: number
-) {
+  pageSize: number,
+  cursor: { before?: number; after?: number } = {}
+): Promise<{
+  plays: StationPlay[];
+  newerCursor: number | null;
+  olderCursor: number | null;
+}> {
   "use cache";
   cacheLife("live");
 
-  const { data, error } = await getSupabase()
-    .from("plays")
-    .select(
-      `
-      id,
-      time_played,
-      songs!inner (
-        title,
-        artists!inner ( name )
-      )
-    `
-    )
-    .eq("station_id", stationId)
-    .eq("is_deleted", false)
-    .eq("is_likely_not_music", false)
-    .order("time_played", { ascending: false })
-    .range(offset, offset + limit - 1);
+  // One extra row tells whether there's another page in that direction
+  if (cursor.after !== undefined) {
+    const rows = await fetchStationPlaysPage(stationId, pageSize + 1, {
+      after: cursor.after,
+    });
+    // Otherwise this is the newest page, so show it in full
+    if (rows.length > pageSize) {
+      const plays = rows.slice(1);
+      return {
+        plays,
+        newerCursor: plays[0].id,
+        olderCursor: plays[plays.length - 1].id,
+      };
+    }
+  } else if (cursor.before !== undefined) {
+    const rows = await fetchStationPlaysPage(stationId, pageSize + 1, {
+      before: cursor.before,
+    });
+    if (rows.length > 0) {
+      const plays = rows.slice(0, pageSize);
+      return {
+        plays,
+        newerCursor: plays[0].id,
+        olderCursor: rows.length > pageSize ? plays[plays.length - 1].id : null,
+      };
+    }
+  }
 
-  if (error) throw error;
-
-  return data.map((play: any) => ({
-    id: play.id as number,
-    artist: play.songs.artists.name as string,
-    title: play.songs.title as string,
-    time_played: play.time_played as string,
-  }));
+  const rows = await fetchStationPlaysPage(stationId, pageSize + 1, {});
+  const plays = rows.slice(0, pageSize);
+  return {
+    plays,
+    newerCursor: null,
+    olderCursor: rows.length > pageSize ? plays[plays.length - 1].id : null,
+  };
 }
 
 // ---------------------------------------------------------------------------
