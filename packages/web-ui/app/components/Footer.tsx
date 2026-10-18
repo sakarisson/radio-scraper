@@ -8,12 +8,12 @@ export async function Footer() {
   // Keep database reads out of the build; the date itself is cached.
   await connection();
   const earliest = await getEarliestPlayDate();
-  const dateStr = earliest ? monthYear(earliest) : "the beginning";
+  const since = earliest ? monthYear(earliest) : null;
 
   return (
     <footer className={styles.footer}>
       <span>{strings.siteName}</span>
-      <span>{strings.footerText(dateStr)}</span>
+      <span>{strings.footerText(since)}</span>
     </footer>
   );
 }

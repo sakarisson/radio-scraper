@@ -1,14 +1,12 @@
 import * as styles from "@/styles/play-calendar.css";
 import * as ui from "@/styles/ui.css";
 import { formatNumber } from "@/utils/format";
+import { MONTH_NAMES } from "@/utils/months";
 import { strings } from "@/utils/strings";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-const WEEKDAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
+const MONTHS = MONTH_NAMES.map((name) => name.slice(0, 3));
+const WEEKDAYS = ["mán", "", "mik", "", "frí", "", ""];
 
 type Level = keyof typeof styles.cell;
 
@@ -49,7 +47,7 @@ const toKey = (d: Date) => d.toISOString().slice(0, 10);
 const fromKey = (key: string) => new Date(`${key}T00:00:00Z`);
 
 function tooltip(count: number, day: Date) {
-  const date = day.toLocaleDateString("en-US", {
+  const date = day.toLocaleDateString("fo", {
     timeZone: "UTC",
     weekday: "short",
     month: "short",
@@ -57,7 +55,7 @@ function tooltip(count: number, day: Date) {
     year: "numeric",
   });
   const plays = count === 1 ? strings.play : strings.playsLabel;
-  return `${count === 0 ? "No" : formatNumber(count)} ${plays} · ${date}`;
+  return `${count === 0 ? strings.noPlays : formatNumber(count)} ${plays} · ${date}`;
 }
 
 /**

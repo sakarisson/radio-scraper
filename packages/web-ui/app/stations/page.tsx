@@ -5,6 +5,7 @@ import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
 import {
+  capitalize,
   countWord,
   formatNumber,
   formatShare,
@@ -25,7 +26,7 @@ export default async function StationsPage() {
 
   const stations = [...unsorted].sort((a, b) => b.playCount - a.playCount);
   const total = stations.reduce((sum, s) => sum + s.playCount, 0);
-  const since = earliest ? monthYear(earliest) : "the start";
+  const since = earliest ? monthYear(earliest) : null;
 
   return (
     <section className={ui.intro.page}>
@@ -33,7 +34,7 @@ export default async function StationsPage() {
       <h1 className={`${ui.display.md} ${styles.summary}`}>
         {strings.stationsSummary(
           formatNumber(total),
-          countWord(stations.length),
+          capitalize(countWord(stations.length)),
           since
         )}
       </h1>

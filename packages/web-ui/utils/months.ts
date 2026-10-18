@@ -12,6 +12,6 @@ export function getLastCompletedMonth() {
 }
 
 export const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "januar", "februar", "mars", "apríl", "mai", "juni",
+  "juli", "august", "september", "oktober", "november", "desember",
 ];
