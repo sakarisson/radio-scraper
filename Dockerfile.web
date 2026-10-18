@@ -3,8 +3,14 @@ FROM node:22-alpine AS build
 RUN npm install -g pnpm@8.6.9
 
 WORKDIR /app
-COPY . .
+# Copy only the web app, not the scraper: pnpm would otherwise install the
+# scraper's dev dependencies too, like better-sqlite3, which has no prebuilt
+# binary for this Node version and can't compile without Python. Manifests
+# first, so the install layer is cached while only source files change.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+COPY packages/web-ui/package.json packages/web-ui/
 RUN pnpm install --frozen-lockfile
+COPY packages/web-ui packages/web-ui
 # The build doesn't touch the database, so it needs no Supabase credentials.
 # At runtime they come from Fly secrets.
 RUN pnpm --filter web-ui build
