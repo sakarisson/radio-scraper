@@ -33,8 +33,6 @@ export const strings = {
     `${plays} ${singular ? "play" : "plays"} in the past year`,
   previousPage: "← Previous",
   nextPage: "Next →",
-  newerPlays: "← Newer plays",
-  olderPlays: "Older plays →",
   pageOf: (current: number, total: number) => `Page ${current} of ${total}`,
   notFoundCode: "404",
   notFoundMessage: "This page could not be found.",

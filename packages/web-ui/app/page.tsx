@@ -50,32 +50,43 @@ export default async function Home() {
           <span className={ui.aside}>{strings.lastPlayedHint}</span>
         </div>
         <div className={styles.stationCards}>
-          {stations.map((play) => {
-            return (
-              <Link
-                key={play.station}
-                href={`/stations/${play.station}`}
-                className={[
-                  styles.stationCard,
-                  ui.softCard,
-                  ui.blockLink,
-                  isStale(play.time_played) ? styles.stale : "",
-                ].join(" ")}
-              >
-                <div className={styles.stationCardHeader}>
-                  <StationDot station={play.station} size="sm" />
-                  <span>{play.station}</span>
-                  <span className={styles.stationCardAgo}>
-                    {timeAgo(play.time_played)}
-                  </span>
-                </div>
-                <div className={styles.stationCardBody}>
-                  <div className={styles.stationCardSong}>{play.title}</div>
-                  <div className={ui.itemSub}>{play.artist}</div>
-                </div>
-              </Link>
-            );
-          })}
+          {stations.map((play) => (
+            <div
+              key={play.station}
+              className={[
+                styles.stationCard,
+                ui.softCard,
+                isStale(play.time_played) ? styles.stale : "",
+              ].join(" ")}
+            >
+              <div className={styles.stationCardHeader}>
+                <StationDot station={play.station} size="sm" />
+                <Link
+                  href={`/stations/${play.station}`}
+                  className={styles.stationCardLink}
+                >
+                  {play.station}
+                </Link>
+                <span className={styles.stationCardAgo}>
+                  {timeAgo(play.time_played)}
+                </span>
+              </div>
+              <div className={styles.stationCardBody}>
+                <Link
+                  href={`/artists/${encodeURIComponent(play.artist)}/${encodeURIComponent(play.title)}`}
+                  className={`${styles.stationCardSong} ${styles.stationCardInnerLink}`}
+                >
+                  {play.title}
+                </Link>
+                <Link
+                  href={`/artists/${encodeURIComponent(play.artist)}`}
+                  className={`${ui.itemSub} ${styles.stationCardInnerLink}`}
+                >
+                  {play.artist}
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

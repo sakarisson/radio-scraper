@@ -30,6 +30,7 @@ export const stationCards = style({
 });
 
 export const stationCard = style({
+  position: "relative",
   display: "flex",
   flexDirection: "column",
   gap: "28px",
@@ -52,6 +53,23 @@ export const stationCardHeader = style({
   gap: "8px",
   fontSize: "14px",
   fontWeight: 500,
+});
+
+// The station link stretches over the whole card, so clicking anywhere that
+// isn't the song or artist opens the station.
+export const stationCardLink = style({
+  "::after": {
+    content: "",
+    position: "absolute",
+    inset: 0,
+  },
+});
+
+// Song and artist links sit above the stretched station link
+export const stationCardInnerLink = style({
+  position: "relative",
+  zIndex: 1,
+  alignSelf: "flex-start",
 });
 
 export const stationCardAgo = style({

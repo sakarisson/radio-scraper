@@ -1,4 +1,3 @@
-import { z } from "zod";
 import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
@@ -12,57 +11,37 @@ import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
 import { formatNumber, formatShare, playTime, timeAgo } from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
-import { CursorPagination } from "@/app/components/Pagination";
 import { StationDot } from "@/app/components/Station";
 import { Stats } from "@/app/components/Stats";
 import { isStale } from "@/utils/stations";
 
-const PAGE_SIZE = 50;
-
-const playId = z.string().regex(/^\d+$/).transform(Number).optional();
-
-// Pages are addressed by a neighbouring play: ?before=<id> for older plays,
-// ?after=<id> for newer ones. See getStationPlays.
-const paramsSchema = z
-  .object({ before: playId, after: playId })
-  .optional();
+// Only the most recent plays are listed, with no paging back through
+// history, so the full play log can't be scraped page by page.
+const RECENT_PLAYS = 50;
 
 export default async function StationDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
   const { slug: rawSlug } = await params;
   const slug = decodeURIComponent(rawSlug);
-  const parsed = paramsSchema.safeParse(await searchParams);
-  const cursor = (parsed.success && parsed.data) || {};
 
   const station = await getStation(slug);
   if (station === null) {
     notFound();
   }
 
-  const isFirstPage = cursor.before === undefined && cursor.after === undefined;
-  const [page, allPlaysCount, firstPage] = await Promise.all([
-    getStationPlays(station.id, PAGE_SIZE, cursor),
+  const [plays, allPlaysCount] = await Promise.all([
+    getStationPlays(station.id, RECENT_PLAYS),
     getTotalPlayCount(),
-    isFirstPage ? null : getStationPlays(station.id, PAGE_SIZE),
   ]);
 
-  const { plays } = page;
   const totalCount = station.playCount;
-  const latestPlay = (firstPage ?? page).plays[0];
-
-  const basePath = `/stations/${rawSlug}`;
-  const newerHref =
-    page.newerCursor === null ? null : `${basePath}?after=${page.newerCursor}`;
-  const olderHref =
-    page.olderCursor === null ? null : `${basePath}?before=${page.olderCursor}`;
+  const latestPlay = plays[0];
 
   const songHref = (artist: string, title: string) =>
     `/artists/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
@@ -137,12 +116,6 @@ export default async function StationDetailPage({
             </div>
           </div>
         ))}
-        <CursorPagination
-          prevHref={newerHref}
-          nextHref={olderHref}
-          prevLabel={strings.newerPlays}
-          nextLabel={strings.olderPlays}
-        />
       </section>
     </>
   );
