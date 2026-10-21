@@ -6,6 +6,7 @@ const hues: Record<string, number> = {
   kvf2: 175,
   sjey: 95,
   nordlysid: 320,
+  fm987: 135,
 };
 
 const order = Object.keys(hues);
