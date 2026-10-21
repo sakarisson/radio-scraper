@@ -252,12 +252,14 @@ Same three options as VoxPop, using:
 
 > **Update (2026-10-18):** FM98,7 now streams from the AzuraCast server (`liveradio.stream.fo`, shortcode `fm98,7`) with structured metadata and can use the shared AzuraCast fetcher. The Icecast options below are superseded.
 >
-> **Status (2026-10-21): not shipped yet.** A 3½-day local trial (1,016 tracks) kept 72%, but only 74% of kept tracks were clean. Its tags look like old 30-character ID3v1 fields mixed with newer tags. To do before shipping:
-> - [ ] Strip album/year from titles: `Allan veg / (Her er løtan) / 2008` → `Allan veg` (137 tracks). Only when the title ends in a year, since real titles can contain ` / `.
-> - [ ] Drop the duplicated tag value after `; `: `Hin Gamli Maðurin; Hin Gamli Maðurin` (47 tracks)
-> - [ ] Strip leading track numbers: `02 - Dómadagsmorgun` (5 tracks)
-> - [ ] Decide what to do about stray trailing characters on artists (`Magni Christiansent`, `SALTT`, `Alex Bærendsen¾`, ~25 duplicate artists). They can't be detected in the fetcher; they'd need merging in the database.
-> - [ ] Accept or contact the station about the 28% of tracks with an empty artist and only the artist name in the title (song name missing), and titles cut at 30 characters.
+> **Status (2026-10-21):** Its tags look like old 30-character ID3v1 fields mixed with newer tags, so it has its own, more aggressive cleanup in `fm987.ts`. On the 3½-day local trial (1,019 tracks) 72% are kept and 98% of kept tracks are clean (up from 74%).
+> - [x] Strip album/year from titles: `Allan veg / (Her er løtan) / 2008` → `Allan veg` (137 tracks). Only when the title ends in a year, has a genre, or the album is in parentheses, since real titles can contain ` / `.
+> - [x] Drop the duplicated tag value after `; `: `Hin Gamli Maðurin; Hin Gamli Maðurin` (47 tracks)
+> - [x] Strip leading track numbers and stray dashes: `02 - Dómadagsmorgun`, `- Í syndamyrkri`
+> - [x] Strip album names cut off by the 30-character limit: `Hann elskaði meg fyrst - (Kom`
+> - [x] Reject artists that are only a track number (`4`, `(4)`)
+> - [ ] Stray trailing characters on artists (`Magni Christiansent`, `SALTT`, `Alex Bærendsen¾`, ~25 duplicate artists): decided to merge these in the database later. Raw AzuraCast fields are kept in `raw_play_data`.
+> - Known and accepted: 28% of tracks are rejected because the artist is empty and the title only holds the artist name (song name missing). Some titles are cut at 30 characters, and a few have lost letters (`�`).
 
 ### Metadata Source (TBD — needs spike)
 
