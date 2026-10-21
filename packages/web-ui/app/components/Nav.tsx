@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as styles from "@/styles/layout.css";
-import { strings } from "@/utils/strings";
+import { T } from "./T";
 
 const items = [
-  { href: "/artists", label: strings.navArtists },
-  { href: "/charts", label: strings.navCharts },
-  { href: "/stations", label: strings.navStations },
+  { href: "/artists", label: <T>{(s) => s.navArtists}</T> },
+  { href: "/charts", label: <T>{(s) => s.navCharts}</T> },
+  { href: "/stations", label: <T>{(s) => s.navStations}</T> },
 ];
 
 /** The nav links, with the one for the current section highlighted. */

@@ -8,7 +8,7 @@ import {
 } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { T } from "@/app/components/T";
 import { formatNumber, formatShare, playTime, timeAgo } from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { StationDot } from "@/app/components/Station";
@@ -50,7 +50,11 @@ export default async function StationDetailPage({
 
   return (
     <>
-      <Breadcrumbs items={[{ href: "/stations", label: strings.stationsTitle }]} />
+      <Breadcrumbs
+        items={[
+          { href: "/stations", label: <T>{(s) => s.stationsTitle}</T> },
+        ]}
+      />
 
       <section className={ui.intro.detail}>
         <div className={styles.titleRow}>
@@ -60,10 +64,13 @@ export default async function StationDetailPage({
         <div className={ui.introStats}>
           <Stats
             items={[
-              { value: formatNumber(totalCount), label: strings.plays },
+              {
+                value: <T>{(_, lang) => formatNumber(totalCount, lang)}</T>,
+                label: <T>{(s) => s.plays}</T>,
+              },
               {
                 value: formatShare(totalCount, allPlaysCount),
-                label: strings.ofAllPlays,
+                label: <T>{(s) => s.ofAllPlays}</T>,
               },
             ]}
           />
@@ -76,7 +83,11 @@ export default async function StationDetailPage({
             className={`${styles.latestCard} ${ui.softCard} ${isStale(latestPlay.time_played) ? styles.stale : ""}`}
           >
             <span className={ui.aside}>
-              {strings.lastPlayedCard(timeAgo(latestPlay.time_played))}
+              <T>
+                {(s, lang) =>
+                  s.lastPlayedCard(timeAgo(latestPlay.time_played, lang))
+                }
+              </T>
             </span>
             <div className={ui.itemText} style={{ gap: 6 }}>
               <Link
@@ -98,11 +109,15 @@ export default async function StationDetailPage({
 
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader}>
-          <h2 className={ui.sectionTitle}>{strings.recentPlaysOn(slug)}</h2>
+          <h2 className={ui.sectionTitle}>
+            <T>{(s) => s.recentPlaysOn(slug)}</T>
+          </h2>
         </div>
         {plays.map((play) => (
           <div key={play.id} className={`${styles.playRow} ${ui.row}`}>
-            <span className={ui.aside}>{playTime(play.time_played)}</span>
+            <span className={ui.aside}>
+              <T>{(_, lang) => playTime(play.time_played, lang)}</T>
+            </span>
             <div className={ui.itemText}>
               <Link
                 href={songHref(play.artist, play.title)}

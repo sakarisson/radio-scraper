@@ -1,3 +1,4 @@
+import type { Lang } from "./i18n";
 import { faroeParts } from "./time";
 
 /** The current month in Faroese time. */
@@ -11,7 +12,13 @@ export function getLastCompletedMonth() {
   return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }
 
-export const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+export const MONTH_NAMES: Record<Lang, string[]> = {
+  en: [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ],
+  fo: [
+    "januar", "februar", "mars", "apríl", "mai", "juni",
+    "juli", "august", "september", "oktober", "november", "desember",
+  ],
+};

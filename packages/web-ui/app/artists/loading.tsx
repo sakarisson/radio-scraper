@@ -1,6 +1,6 @@
 import * as styles from "@/styles/artists.css";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { T } from "@/app/components/T";
 import {
   SkeletonBlock,
   SkeletonRows,
@@ -11,7 +11,7 @@ export default function Loading() {
   return (
     <>
       <section className={ui.intro.page}>
-        <span className={ui.eyebrow}>{strings.artists}</span>
+        <span className={ui.eyebrow}><T>{(s) => s.artists}</T></span>
         <SkeletonBlock width={360} height={56} />
       </section>
       <section className={ui.section.md}>

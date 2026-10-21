@@ -1,7 +1,7 @@
 "use client";
 
 import * as styles from "@/styles/layout.css";
-import { strings } from "@/utils/strings";
+import { T } from "./T";
 import { THEME_STORAGE_KEY } from "@/utils/theme";
 
 function currentTheme() {
@@ -23,8 +23,8 @@ export function ThemeToggle() {
 
   return (
     <button type="button" onClick={toggle} className={styles.themeToggle}>
-      <span className={styles.showWhenLight}>{strings.themeDark}</span>
-      <span className={styles.showWhenDark}>{strings.themeLight}</span>
+      <span className={styles.showWhenLight}><T>{(s) => s.themeDark}</T></span>
+      <span className={styles.showWhenDark}><T>{(s) => s.themeLight}</T></span>
     </button>
   );
 }

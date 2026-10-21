@@ -7,10 +7,12 @@ import { Footer } from "./components/Footer";
 import { NavigationProgress } from "./components/NavigationProgress";
 import { strings } from "@/utils/strings";
 import { themeInitScript } from "@/utils/theme";
+import { DEFAULT_LANG, langInitScript } from "@/utils/i18n";
 
+// In the default language; LangToggle updates the tab title to match.
 export const metadata: Metadata = {
-  title: strings.siteName,
-  description: strings.siteDescription,
+  title: strings[DEFAULT_LANG].siteName,
+  description: strings[DEFAULT_LANG].siteDescription,
 };
 
 export default function RootLayout({
@@ -19,9 +21,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={DEFAULT_LANG} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: langInitScript }} />
       </head>
       <body className={layout.root}>
         <Suspense fallback={null}>

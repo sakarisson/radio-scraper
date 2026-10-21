@@ -1,14 +1,14 @@
 import Link from "next/link";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { T } from "./T";
 
 type Props = {
   currentPage: number;
   totalPages: number;
   basePath: string;
   extraParams?: Record<string, string | undefined>;
-  prevLabel?: string;
-  nextLabel?: string;
+  prevLabel?: React.ReactNode;
+  nextLabel?: React.ReactNode;
 };
 
 function buildHref(
@@ -32,8 +32,8 @@ export function Pagination({
   totalPages,
   basePath,
   extraParams,
-  prevLabel = strings.previousPage,
-  nextLabel = strings.nextPage,
+  prevLabel = <T>{(s) => s.previousPage}</T>,
+  nextLabel = <T>{(s) => s.nextPage}</T>,
 }: Props) {
   if (totalPages <= 1) return null;
 
@@ -42,7 +42,9 @@ export function Pagination({
 
   return (
     <div className={ui.pagination}>
-      <span>{strings.pageOf(currentPage + 1, totalPages)}</span>
+      <span>
+        <T>{(s) => s.pageOf(currentPage + 1, totalPages)}</T>
+      </span>
       <div className={ui.paginationButtons}>
         {hasPrev ? (
           <Link

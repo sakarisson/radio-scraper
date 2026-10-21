@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getSongPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { T } from "@/app/components/T";
 import {
   clockTime,
   formatNumber,
@@ -42,7 +42,7 @@ export default async function SongPage({
     <>
       <Breadcrumbs
         items={[
-          { href: "/artists", label: strings.artists },
+          { href: "/artists", label: <T>{(s) => s.artists}</T> },
           { href: artistHref, label: artistName },
         ]}
       />
@@ -55,16 +55,27 @@ export default async function SongPage({
         <div className={ui.introStats}>
           <Stats
             items={[
-              { value: formatNumber(totalCount), label: strings.plays },
+              {
+                value: <T>{(_, lang) => formatNumber(totalCount, lang)}</T>,
+                label: <T>{(s) => s.plays}</T>,
+              },
               ...(playRange
                 ? [
                     {
-                      value: relativeTime(playRange.firstPlayed),
-                      label: strings.firstPlayed,
+                      value: (
+                        <T>
+                          {(_, lang) => relativeTime(playRange.firstPlayed, lang)}
+                        </T>
+                      ),
+                      label: <T>{(s) => s.firstPlayed}</T>,
                     },
                     {
-                      value: relativeTime(playRange.lastPlayed),
-                      label: strings.lastPlayed,
+                      value: (
+                        <T>
+                          {(_, lang) => relativeTime(playRange.lastPlayed, lang)}
+                        </T>
+                      ),
+                      label: <T>{(s) => s.lastPlayed}</T>,
                     },
                   ]
                 : []),
@@ -80,7 +91,9 @@ export default async function SongPage({
       {stationBreakdown.length > 0 && (
         <section className={ui.section.sm}>
           <div className={ui.sectionHeader}>
-            <h2 className={ui.sectionTitle}>{strings.playsByStation}</h2>
+            <h2 className={ui.sectionTitle}>
+              <T>{(s) => s.playsByStation}</T>
+            </h2>
           </div>
           <StationSplit breakdown={stationBreakdown} />
         </section>
@@ -88,7 +101,9 @@ export default async function SongPage({
 
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader}>
-          <h2 className={ui.sectionTitle}>{strings.recentPlays}</h2>
+          <h2 className={ui.sectionTitle}>
+            <T>{(s) => s.recentPlays}</T>
+          </h2>
         </div>
         <div
           className={styles.songPlays}
@@ -100,14 +115,14 @@ export default async function SongPage({
           {plays.map((play) => (
             <div key={play.id} className={`${styles.songPlay} ${ui.row}`}>
               <span className={styles.songPlayDay}>
-                {shortDate(play.time_played)}
+                <T>{(_, lang) => shortDate(play.time_played, lang)}</T>
               </span>
               <span className={styles.songPlayTime}>
                 {clockTime(play.time_played)}
               </span>
               <StationLink station={play.station} />
               <span className={styles.songPlayAgo}>
-                {timeAgo(play.time_played)}
+                <T>{(_, lang) => timeAgo(play.time_played, lang)}</T>
               </span>
             </div>
           ))}

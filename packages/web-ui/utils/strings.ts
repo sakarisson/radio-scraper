@@ -1,4 +1,7 @@
-export const strings = {
+import { capitalize } from "./format";
+import type { Lang } from "./i18n";
+
+const en = {
   siteName: "Faroese Radio",
   siteDescription: "An overview of songs played on Faroese radio stations",
   homeTitle: "An overview of songs played on Faroese radio stations.",
@@ -13,6 +16,7 @@ export const strings = {
   plays: "Plays",
   play: "play",
   playsLabel: "plays",
+  noPlays: "No",
   artistCount: (count: string) => `${count} artists`,
   trending: "Trending",
   allArtistsByPlays: "All artists, by total plays",
@@ -34,6 +38,7 @@ export const strings = {
   previousPage: "← Previous",
   nextPage: "Next →",
   pageOf: (current: number, total: number) => `Page ${current} of ${total}`,
+  breadcrumb: "Breadcrumb",
   notFoundCode: "404",
   notFoundMessage: "This page could not be found.",
   goBackHome: "Go back home →",
@@ -50,12 +55,91 @@ export const strings = {
   noDataForMonth: "No plays recorded for this month.",
   allStations: "All stations",
   stationsTitle: "Stations",
-  stationsSummary: (plays: string, stations: string, since: string) =>
-    `${plays} plays across ${stations} stations since ${since}.`,
+  // `stations` is a number word, like "three". `since` is a month and year,
+  // or null when there is no data yet.
+  stationsSummary: (plays: string, stations: string, since: string | null) =>
+    `${plays} plays across ${stations} stations since ${since ?? "the start"}.`,
   lastPlayedAgo: (ago: string) => `Last played ${ago}`,
   lastPlayedCard: (ago: string) => `Last played · ${ago}`,
   playsShare: (share: string) => `plays · ${share}`,
   ofAllPlays: "Of all logged plays",
   recentPlaysOn: (station: string) => `Recent plays on ${station}`,
-  footerText: (date: string) => `Tracking Faroese radio since ${date}`,
-} as const;
+  footerText: (since: string | null) =>
+    `Tracking Faroese radio since ${since ?? "the beginning"}`,
+};
+
+export type Strings = typeof en;
+
+const fo: Strings = {
+  siteName: "Føroyskt útvarp",
+  siteDescription:
+    "Eitt yvirlit yvir løg, ið verða spæld á føroyskum útvarpsrásum",
+  homeTitle: "Eitt yvirlit yvir løg, ið verða spæld á føroyskum útvarpsrásum.",
+  lastPlayed: "Seinast spælt",
+  lastPlayedHint: "Seinasta lagið á hvørjari rás",
+  recentPlays: "Nýliga spælt",
+  browseAllArtists: "Sí allar tónleikararnar →",
+  topSongsOfMonth: (month: string) => `Mest spældu løgini í ${month}`,
+  monthlyCharts: "Mánaðarlistar →",
+  artists: "Tónleikarar",
+  songs: "Løg",
+  plays: "Spælingar",
+  play: "spæling",
+  playsLabel: "spælingar",
+  noPlays: "Ongar",
+  artistCount: (count: string) => `${count} tónleikarar`,
+  trending: "Í vøkstri",
+  allArtistsByPlays: "Allir tónleikarar, eftir tali av spælingum",
+  resultsFor: (query: string) => `Tónleikarar, ið samsvara við „${query}“`,
+  searchArtistsPlaceholder: "Leita eftir tónleikara",
+  noArtistsFound: "Eingir tónleikarar funnir.",
+  noArtistsFoundMatching: (query: string) =>
+    `Eingir tónleikarar funnir, ið samsvara við „${query}“.`,
+  playsByStation: "Spælingar eftir rás",
+  sortLastPlayed: "Seinast spælt",
+  sortMostPlayed: "Mest spælt",
+  title: "Heiti",
+  firstPlayed: "Fyrst spælt",
+  firstPlay: "Fyrsta spæling",
+  playsPerDay: "Spælingar um dagin",
+  playsPerDayLegend: "Spælingar um dagin:",
+  playsInPastYear: (plays: string, singular: boolean) =>
+    `${plays} ${singular ? "spæling" : "spælingar"} seinasta árið`,
+  previousPage: "← Fyrri",
+  nextPage: "Næsta →",
+  pageOf: (current: number, total: number) => `Síða ${current} av ${total}`,
+  breadcrumb: "Staðseting",
+  notFoundCode: "404",
+  notFoundMessage: "Henda síðan finst ikki.",
+  goBackHome: "Aftur á forsíðuna →",
+  navArtists: "Tónleikarar",
+  navCharts: "Listar",
+  navStations: "Rásir",
+  themeDark: "Myrkt",
+  themeLight: "Ljóst",
+  charts: "Listar",
+  topArtists: "Mest spældu tónleikararnir",
+  topSongs: "Mest spældu løgini",
+  previousMonth: "Fyrri mánaður",
+  nextMonth: "Næsti mánaður",
+  noDataForMonth: "Ongar spælingar skrásettar í hesum mánaðinum.",
+  allStations: "Allar rásir",
+  stationsTitle: "Rásir",
+  // `stations` is a number word that agrees with "rás" (feminine), like
+  // "tríggjar", and starts the sentence.
+  stationsSummary: (plays: string, stations: string, since: string | null) =>
+    `${capitalize(stations)} rásir hava til samans spælt ${plays} ferðir ${
+      since ? `síðan ${since}` : "frá byrjan"
+    }.`,
+  lastPlayedAgo: (ago: string) => `Seinast spælt ${ago}`,
+  lastPlayedCard: (ago: string) => `Seinast spælt · ${ago}`,
+  playsShare: (share: string) => `spælingar · ${share}`,
+  ofAllPlays: "Av øllum skrásettum spælingum",
+  recentPlaysOn: (station: string) => `Nýliga spælt á ${station}`,
+  footerText: (since: string | null) =>
+    since
+      ? `Vit hava fylgt við føroyskum útvarpi síðan ${since}`
+      : "Vit fylgja við føroyskum útvarpi",
+};
+
+export const strings: Record<Lang, Strings> = { en, fo };
