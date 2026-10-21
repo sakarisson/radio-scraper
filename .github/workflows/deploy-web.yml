@@ -8,6 +8,10 @@ on:
       - packages/web-ui/**
       - Dockerfile.web
       - fly.web.toml
+      # Migrations can change past data (e.g. flagging plays as non-music).
+      # The web app's data cache lives in memory, so a redeploy clears it.
+      - supabase/migrations/**
+      - .github/workflows/deploy-web.yml
 
 jobs:
   deploy:
