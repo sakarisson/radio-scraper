@@ -1,6 +1,6 @@
 import Link from "next/link";
 import * as ui from "@/styles/ui.css";
-import { stationColor } from "@/utils/stations";
+import { stationColor, stationName } from "@/utils/stations";
 import { formatNumber, formatShare } from "@/utils/format";
 import { StationDot } from "./Station";
 import { T } from "./T";
@@ -43,7 +43,7 @@ export function StationSplit({
             className={ui.splitLegendItem}
           >
             <StationDot station={station} size="sm" />
-            <span className={ui.strong}>{station}</span>
+            <span className={ui.strong}>{stationName(station)}</span>
             <span className={ui.muted}>
               <T>{(_, lang) => formatNumber(playCount, lang)}</T> &middot;{" "}
               {formatShare(playCount, total)}

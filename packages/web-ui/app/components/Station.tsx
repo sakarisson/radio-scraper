@@ -1,6 +1,6 @@
 import Link from "next/link";
 import * as ui from "@/styles/ui.css";
-import { stationColor } from "@/utils/stations";
+import { stationColor, stationName } from "@/utils/stations";
 
 export function StationDot({
   station,
@@ -18,12 +18,12 @@ export function StationDot({
   );
 }
 
-/** Small muted "● kvf" label linking to the station. */
+/** Small muted "● KVF" label linking to the station. */
 export function StationLink({ station }: { station: string }) {
   return (
     <Link href={`/stations/${station}`} className={ui.stationLabel}>
       <StationDot station={station} />
-      {station}
+      {stationName(station)}
     </Link>
   );
 }

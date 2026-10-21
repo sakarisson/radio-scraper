@@ -13,6 +13,7 @@ import {
 } from "@/utils/format";
 import { StationDot } from "../components/Station";
 import { SplitBar } from "../components/StationSplit";
+import { stationName } from "@/utils/stations";
 
 export default async function StationsPage() {
   // Render per request: the page shows times relative to now. The data
@@ -60,7 +61,7 @@ export default async function StationsPage() {
         >
           <span className={styles.stationName}>
             <StationDot station={station.slug} size="md" />
-            {station.slug}
+            {stationName(station.slug)}
           </span>
           <span className={styles.stationPlays}>
             <span>

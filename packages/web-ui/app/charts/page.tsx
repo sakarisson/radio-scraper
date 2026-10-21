@@ -10,6 +10,7 @@ import { T } from "../components/T";
 import { capitalize } from "@/utils/format";
 import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
 import { StationDot } from "../components/Station";
+import { stationName } from "@/utils/stations";
 import { vars } from "@/styles/theme.css";
 import { ChartResults } from "./ChartResults";
 import { ChartResultsSkeleton } from "./ChartResultsSkeleton";
@@ -168,7 +169,7 @@ export default async function ChartsPage({
                 scroll={false}
               >
                 <StationDot station={slug} size="sm" />
-                {slug}
+                {stationName(slug)}
               </Link>
             );
           })}
