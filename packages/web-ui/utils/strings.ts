@@ -1,28 +1,101 @@
-export const strings = {
+import { capitalize } from "./format";
+import type { Lang } from "./i18n";
+
+const en = {
+  siteName: "Faroese Radio",
+  siteDescription: "An overview of songs played on Faroese radio stations",
+  homeTitle: "An overview of songs played on Faroese radio stations.",
+  lastPlayed: "Last played",
+  lastPlayedHint: "Most recent song on each station",
+  recentPlays: "Recent plays",
+  browseAllArtists: "Browse all artists →",
+  topSongsOfMonth: (month: string) => `Top songs, ${month}`,
+  monthlyCharts: "Monthly charts →",
+  artists: "Artists",
+  songs: "Songs",
+  plays: "Plays",
+  play: "play",
+  playsLabel: "plays",
+  noPlays: "No",
+  artistCount: (count: string) => `${count} artists`,
+  trending: "Trending",
+  allArtistsByPlays: "All artists, by total plays",
+  resultsFor: (query: string) => `Artists matching “${query}”`,
+  searchArtistsPlaceholder: "Search artists",
+  noArtistsFound: "No artists found.",
+  noArtistsFoundMatching: (query: string) =>
+    `No artists found matching “${query}”.`,
+  playsByStation: "Plays by station",
+  sortLastPlayed: "Last played",
+  sortMostPlayed: "Most played",
+  title: "Title",
+  firstPlayed: "First played",
+  firstPlay: "First play",
+  playsPerDay: "Plays per day",
+  playsPerDayLegend: "Plays per day:",
+  playsInPastYear: (plays: string, singular: boolean) =>
+    `${plays} ${singular ? "play" : "plays"} in the past year`,
+  previousPage: "← Previous",
+  nextPage: "Next →",
+  pageOf: (current: number, total: number) => `Page ${current} of ${total}`,
+  breadcrumb: "Breadcrumb",
+  notFoundCode: "404",
+  notFoundMessage: "This page could not be found.",
+  goBackHome: "Go back home →",
+  navArtists: "Artists",
+  navCharts: "Charts",
+  navStations: "Stations",
+  themeDark: "Dark",
+  themeLight: "Light",
+  charts: "Charts",
+  topArtists: "Top artists",
+  topSongs: "Top songs",
+  previousMonth: "Previous month",
+  nextMonth: "Next month",
+  noDataForMonth: "No plays recorded for this month.",
+  allStations: "All stations",
+  stationsTitle: "Stations",
+  // `stations` is a number word, like "three". `since` is a month and year,
+  // or null when there is no data yet.
+  stationsSummary: (plays: string, stations: string, since: string | null) =>
+    `${plays} plays across ${stations} stations since ${since ?? "the start"}.`,
+  lastPlayedAgo: (ago: string) => `Last played ${ago}`,
+  lastPlayedCard: (ago: string) => `Last played · ${ago}`,
+  playsShare: (share: string) => `plays · ${share}`,
+  ofAllPlays: "Of all logged plays",
+  recentPlaysOn: (station: string) => `Recent plays on ${station}`,
+  footerText: (since: string | null) =>
+    `Tracking Faroese radio since ${since ?? "the beginning"}`,
+};
+
+export type Strings = typeof en;
+
+const fo: Strings = {
   siteName: "Føroyskt útvarp",
-  siteDescription: "Eitt yvirlit yvir løg, ið verða spæld á føroyskum útvarpsstøðum",
-  homeTitle: "Eitt yvirlit yvir løg, ið verða spæld á føroyskum útvarpsstøðum.",
+  siteDescription:
+    "Eitt yvirlit yvir løg, ið verða spæld á føroyskum útvarpsrásum",
+  homeTitle: "Eitt yvirlit yvir løg, ið verða spæld á føroyskum útvarpsrásum.",
   lastPlayed: "Seinast spælt",
-  lastPlayedHint: "Seinasta lagið á hvørjari støð",
+  lastPlayedHint: "Seinasta lagið á hvørjari rás",
   recentPlays: "Nýliga spælt",
-  browseAllArtists: "Sí øll listafólkini →",
+  browseAllArtists: "Sí allar tónleikararnar →",
   topSongsOfMonth: (month: string) => `Mest spældu løgini í ${month}`,
   monthlyCharts: "Mánaðarlistar →",
-  artists: "Listafólk",
+  artists: "Tónleikarar",
   songs: "Løg",
   plays: "Spælingar",
   play: "spæling",
   playsLabel: "spælingar",
   noPlays: "Ongar",
-  artistCount: (count: string) => `${count} listafólk`,
+  artistCount: (count: string) => `${count} tónleikarar`,
   trending: "Í vøkstri",
-  allArtistsByPlays: "Øll listafólk, eftir tali av spælingum",
-  resultsFor: (query: string) => `Listafólk, ið samsvara við „${query}“`,
-  searchArtistsPlaceholder: "Leita eftir listafólki",
-  noArtistsFound: "Eingi listafólk funnin.",
+  allArtistsByPlays: "Allir tónleikarar, eftir tali av spælingum",
+  resultsFor: (query: string) => `Tónleikarar, ið samsvara við „${query}“`,
+  searchArtistsPlaceholder: "Leita eftir tónleikara",
+  noArtistsFound: "Eingir tónleikarar funnir.",
   noArtistsFoundMatching: (query: string) =>
-    `Eingi listafólk funnin, ið samsvara við „${query}“.`,
-  playsByStation: "Spælingar eftir støð",
+    `Eingir tónleikarar funnir, ið samsvara við „${query}“.`,
+  playsByStation: "Spælingar eftir rás",
   sortLastPlayed: "Seinast spælt",
   sortMostPlayed: "Mest spælt",
   title: "Heiti",
@@ -39,23 +112,23 @@ export const strings = {
   notFoundCode: "404",
   notFoundMessage: "Henda síðan finst ikki.",
   goBackHome: "Aftur á forsíðuna →",
-  navArtists: "Listafólk",
+  navArtists: "Tónleikarar",
   navCharts: "Listar",
-  navStations: "Støðir",
+  navStations: "Rásir",
   themeDark: "Myrkt",
   themeLight: "Ljóst",
   charts: "Listar",
-  topArtists: "Mest spældu listafólkini",
+  topArtists: "Mest spældu tónleikararnir",
   topSongs: "Mest spældu løgini",
   previousMonth: "Fyrri mánaður",
   nextMonth: "Næsti mánaður",
   noDataForMonth: "Ongar spælingar skrásettar í hesum mánaðinum.",
-  allStations: "Allar støðir",
-  stationsTitle: "Støðir",
-  // `stations` is a number word that agrees with "støð" (feminine), e.g.
-  // "tríggjar". `since` is a month and year, or null when there is no data.
+  allStations: "Allar rásir",
+  stationsTitle: "Rásir",
+  // `stations` is a number word that agrees with "rás" (feminine), like
+  // "tríggjar", and starts the sentence.
   stationsSummary: (plays: string, stations: string, since: string | null) =>
-    `${stations} støðir hava til samans spælt ${plays} ferðir ${
+    `${capitalize(stations)} rásir hava til samans spælt ${plays} ferðir ${
       since ? `síðan ${since}` : "frá byrjan"
     }.`,
   lastPlayedAgo: (ago: string) => `Seinast spælt ${ago}`,
@@ -67,4 +140,6 @@ export const strings = {
     since
       ? `Vit hava fylgt við føroyskum útvarpi síðan ${since}`
       : "Vit fylgja við føroyskum útvarpi",
-} as const;
+};
+
+export const strings: Record<Lang, Strings> = { en, fo };

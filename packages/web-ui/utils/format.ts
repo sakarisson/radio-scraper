@@ -1,19 +1,18 @@
+import type { Lang } from "./i18n";
 import { MONTH_NAMES } from "./months";
 import { faroeParts } from "./time";
 
-const LOCALE = "fo";
-
-/** "1.234.567" */
-export function formatNumber(n: number) {
-  return n.toLocaleString(LOCALE);
-}
-
-export function capitalize(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+/** "1,234,567" in English, "1.234.567" in Faroese */
+export function formatNumber(n: number, lang: Lang) {
+  return n.toLocaleString(lang);
 }
 
 export function formatShare(part: number, total: number) {
   return total > 0 ? `${Math.round((part / total) * 100)}%` : "0%";
+}
+
+export function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -33,28 +32,29 @@ function distanceFromNow(date: string | Date) {
   return { value: Math.round(seconds / size), unit };
 }
 
-const longFormat = new Intl.RelativeTimeFormat(LOCALE, { numeric: "always" });
-const shortFormat = new Intl.RelativeTimeFormat(LOCALE, {
-  numeric: "always",
-  style: "short",
+const relativeFormats = (lang: Lang) => ({
+  long: new Intl.RelativeTimeFormat(lang, { numeric: "always" }),
+  short: new Intl.RelativeTimeFormat(lang, { numeric: "always", style: "short" }),
+  auto: new Intl.RelativeTimeFormat(lang, { numeric: "auto" }),
 });
-const autoFormat = new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
+const RELATIVE = { en: relativeFormats("en"), fo: relativeFormats("fo") };
 
-/** "31 min. síðan", "12 tímar síðan" */
-export function timeAgo(date: string | Date) {
+/** "31 min. ago", "12 hours ago" / "31 min. síðan", "12 tímar síðan" */
+export function timeAgo(date: string | Date, lang: Lang) {
   const { value, unit } = distanceFromNow(date);
-  const format = unit === "minute" || unit === "second" ? shortFormat : longFormat;
-  return format.format(value, unit);
+  const style = unit === "minute" || unit === "second" ? "short" : "long";
+  return RELATIVE[lang][style].format(value, unit);
 }
 
-/** "12 tímar síðan", "Í gjár", "3 ár síðan" */
-export function relativeTime(date: string | Date) {
+/** "Yesterday", "3 years ago" / "Í gjár", "3 ár síðan" */
+export function relativeTime(date: string | Date, lang: Lang) {
   const { value, unit } = distanceFromNow(date);
-  return capitalize(autoFormat.format(value, unit));
+  return capitalize(RELATIVE[lang].auto.format(value, unit));
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const shortMonth = (month: number) => MONTH_NAMES[month - 1].slice(0, 3);
+const shortMonth = (month: number, lang: Lang) =>
+  MONTH_NAMES[lang][month - 1].slice(0, 3);
 
 // Everything below is in Faroese time.
 
@@ -64,37 +64,50 @@ export function clockTime(date: string | Date) {
   return `${pad(p.hour)}:${pad(p.minute)}`;
 }
 
-/** "11. okt", with the year added when it isn't the current one */
-export function shortDate(date: string | Date) {
+/**
+ * "Oct 11" / "11. okt", with the year added when it isn't the current one
+ */
+export function shortDate(date: string | Date, lang: Lang) {
   const p = faroeParts(date);
+  const month = shortMonth(p.month, lang);
+  const dayMonth = lang === "fo" ? `${p.day}. ${month}` : `${month} ${p.day}`;
   return p.year === faroeParts(new Date()).year
-    ? `${p.day}. ${shortMonth(p.month)}`
-    : `${p.day}. ${shortMonth(p.month)} ${p.year}`;
+    ? dayMonth
+    : `${dayMonth} ${p.year}`;
 }
 
-/** "11. okt, 11:55", with the year added when it isn't the current one */
-export function playTime(date: string | Date) {
-  return `${shortDate(date)}, ${clockTime(date)}`;
+/** "Oct 11, 11:55" / "11. okt, 11:55" */
+export function playTime(date: string | Date, lang: Lang) {
+  return `${shortDate(date, lang)}, ${clockTime(date)}`;
 }
 
-/** "11. okt 2025 kl. 11:55" */
-export function fullDateTime(date: string | Date) {
+/** "Oct 11, 2025 at 11:55" / "11. okt 2025 kl. 11:55" */
+export function fullDateTime(date: string | Date, lang: Lang) {
   const p = faroeParts(date);
-  return `${p.day}. ${shortMonth(p.month)} ${p.year} kl. ${clockTime(date)}`;
+  const month = shortMonth(p.month, lang);
+  return lang === "fo"
+    ? `${p.day}. ${month} ${p.year} kl. ${clockTime(date)}`
+    : `${month} ${p.day}, ${p.year} at ${clockTime(date)}`;
 }
 
-/** "oktober 2025" */
-export function monthYear(date: string | Date) {
+/** "October 2025" / "oktober 2025" */
+export function monthYear(date: string | Date, lang: Lang) {
   const p = faroeParts(date);
-  return `${MONTH_NAMES[p.month - 1]} ${p.year}`;
+  return `${MONTH_NAMES[lang][p.month - 1]} ${p.year}`;
 }
 
-// Feminine forms, to agree with "støð" (station).
-const numberWords = [
-  "null", "ein", "tvær", "tríggjar", "fýra", "fimm",
-  "seks", "sjey", "átta", "níggju", "tíggju",
-];
+const NUMBER_WORDS: Record<Lang, string[]> = {
+  en: [
+    "zero", "one", "two", "three", "four", "five",
+    "six", "seven", "eight", "nine", "ten",
+  ],
+  // Feminine forms, to agree with "rás" (station).
+  fo: [
+    "null", "ein", "tvær", "tríggjar", "fýra", "fimm",
+    "seks", "sjey", "átta", "níggju", "tíggju",
+  ],
+};
 
-export function countWord(n: number) {
-  return numberWords[n] ?? formatNumber(n);
+export function countWord(n: number, lang: Lang) {
+  return NUMBER_WORDS[lang][n] ?? formatNumber(n, lang);
 }

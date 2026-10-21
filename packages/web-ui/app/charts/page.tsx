@@ -5,7 +5,8 @@ import { z } from "zod";
 import { getAllStationSlugs } from "@/utils/database";
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { visuallyHidden } from "@/styles/i18n.css";
+import { T } from "../components/T";
 import { capitalize } from "@/utils/format";
 import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
 import { StationDot } from "../components/Station";
@@ -83,8 +84,6 @@ export default async function ChartsPage({
     next.year > lastCompleted.year ||
     (next.year === lastCompleted.year && next.month > lastCompleted.month);
 
-  const monthDisplay = capitalize(`${MONTH_NAMES[month - 1]} ${year}`);
-
   const currentStationsParam = selectedSlugs?.length
     ? selectedSlugs.join(",")
     : undefined;
@@ -95,16 +94,26 @@ export default async function ChartsPage({
     <>
       <section className={`${ui.intro.page} ${styles.header}`}>
         <div>
-          <span className={ui.eyebrow}>{strings.charts}</span>
+          <span className={ui.eyebrow}>
+            <T>{(s) => s.charts}</T>
+          </span>
           <div className={styles.monthPicker}>
             <Link
               href={buildChartsHref(prev.year, prev.month, currentStationsParam)}
               className={styles.monthNav.enabled}
-              aria-label={strings.previousMonth}
             >
-              &#8249;
+              <span aria-hidden>&#8249;</span>
+              <span className={visuallyHidden}>
+                <T>{(s) => s.previousMonth}</T>
+              </span>
             </Link>
-            <h1 className={ui.display.md}>{monthDisplay}</h1>
+            <h1 className={ui.display.md}>
+              <T>
+                {(_, lang) =>
+                  capitalize(`${MONTH_NAMES[lang][month - 1]} ${year}`)
+                }
+              </T>
+            </h1>
             {isFutureNext ? (
               <span className={styles.monthNav.disabled} aria-hidden>
                 &#8250;
@@ -117,9 +126,11 @@ export default async function ChartsPage({
                   currentStationsParam
                 )}
                 className={styles.monthNav.enabled}
-                aria-label={strings.nextMonth}
               >
-                &#8250;
+                <span aria-hidden>&#8250;</span>
+                <span className={visuallyHidden}>
+                  <T>{(s) => s.nextMonth}</T>
+                </span>
               </Link>
             )}
           </div>
@@ -135,7 +146,7 @@ export default async function ChartsPage({
               className={ui.dot.sm}
               style={{ background: vars.color.ink }}
             />
-            {strings.allStations}
+            <T>{(s) => s.allStations}</T>
           </Link>
           {allSlugs.map((slug) => {
             const isActive = selectedSlugs?.includes(slug) ?? false;

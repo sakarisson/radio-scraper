@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import * as styles from "@/styles/layout.css";
-import { strings } from "@/utils/strings";
+import { T } from "./T";
+import { LangToggle } from "./LangToggle";
 import { Nav, NavLinks } from "./Nav";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -10,7 +11,7 @@ export function Header() {
     <header className={styles.header}>
       <Link href="/" className={styles.logo}>
         <span className={styles.logoDot} />
-        {strings.siteName}
+        <T>{(s) => s.siteName}</T>
       </Link>
       <nav className={styles.nav}>
         {/* The current path isn't known when the page shell is prerendered,
@@ -18,6 +19,7 @@ export function Header() {
         <Suspense fallback={<NavLinks pathname={null} />}>
           <Nav />
         </Suspense>
+        <LangToggle />
         <ThemeToggle />
       </nav>
     </header>

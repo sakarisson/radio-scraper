@@ -3,6 +3,7 @@ import * as ui from "@/styles/ui.css";
 import { stationColor } from "@/utils/stations";
 import { formatNumber, formatShare } from "@/utils/format";
 import { StationDot } from "./Station";
+import { T } from "./T";
 
 export function SplitBar({
   items,
@@ -44,7 +45,8 @@ export function StationSplit({
             <StationDot station={station} size="sm" />
             <span className={ui.strong}>{station}</span>
             <span className={ui.muted}>
-              {formatNumber(playCount)} &middot; {formatShare(playCount, total)}
+              <T>{(_, lang) => formatNumber(playCount, lang)}</T> &middot;{" "}
+              {formatShare(playCount, total)}
             </span>
           </Link>
         ))}

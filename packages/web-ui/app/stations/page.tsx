@@ -3,9 +3,8 @@ import { connection } from "next/server";
 import { getEarliestPlayDate, getStations } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { T } from "../components/T";
 import {
-  capitalize,
   countWord,
   formatNumber,
   formatShare,
@@ -26,17 +25,22 @@ export default async function StationsPage() {
 
   const stations = [...unsorted].sort((a, b) => b.playCount - a.playCount);
   const total = stations.reduce((sum, s) => sum + s.playCount, 0);
-  const since = earliest ? monthYear(earliest) : null;
 
   return (
     <section className={ui.intro.page}>
-      <span className={ui.eyebrow}>{strings.stationsTitle}</span>
+      <span className={ui.eyebrow}>
+        <T>{(s) => s.stationsTitle}</T>
+      </span>
       <h1 className={`${ui.display.md} ${styles.summary}`}>
-        {strings.stationsSummary(
-          formatNumber(total),
-          capitalize(countWord(stations.length)),
-          since
-        )}
+        <T>
+          {(s, lang) =>
+            s.stationsSummary(
+              formatNumber(total, lang),
+              countWord(stations.length, lang),
+              earliest ? monthYear(earliest, lang) : null
+            )
+          }
+        </T>
       </h1>
 
       <div className={styles.splitWrap}>
@@ -59,15 +63,23 @@ export default async function StationsPage() {
             {station.slug}
           </span>
           <span className={styles.stationPlays}>
-            <span>{formatNumber(station.playCount)}</span>
+            <span>
+              <T>{(_, lang) => formatNumber(station.playCount, lang)}</T>
+            </span>
             <span className={styles.small}>
-              {strings.playsShare(formatShare(station.playCount, total))}
+              <T>
+                {(s) => s.playsShare(formatShare(station.playCount, total))}
+              </T>
             </span>
           </span>
           {station.latestSong && (
             <span className={styles.stationLatest}>
               <span className={styles.small}>
-                {strings.lastPlayedAgo(timeAgo(station.latestSong.time_played))}
+                <T>
+                  {(s, lang) =>
+                    s.lastPlayedAgo(timeAgo(station.latestSong!.time_played, lang))
+                  }
+                </T>
               </span>
               <span className={styles.stationLatestSong}>
                 {station.latestSong.title}

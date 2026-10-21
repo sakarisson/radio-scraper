@@ -5,7 +5,7 @@ import {
 } from "@/utils/database";
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
-import { strings } from "@/utils/strings";
+import { T } from "../components/T";
 import { formatNumber } from "@/utils/format";
 
 type Row = {
@@ -16,7 +16,13 @@ type Row = {
   playCount: number;
 };
 
-function RankedList({ title, rows }: { title: string; rows: Row[] }) {
+function RankedList({
+  title,
+  rows,
+}: {
+  title: React.ReactNode;
+  rows: Row[];
+}) {
   const max = Math.max(1, ...rows.map((r) => r.playCount));
   return (
     <div>
@@ -45,7 +51,9 @@ function RankedList({ title, rows }: { title: string; rows: Row[] }) {
             </div>
           </div>
           <span className={styles.rankPlays}>
-            {formatNumber(row.playCount)} {strings.playsLabel}
+            <T>
+              {(s, lang) => `${formatNumber(row.playCount, lang)} ${s.playsLabel}`}
+            </T>
           </span>
         </div>
       ))}
@@ -68,7 +76,11 @@ export async function ChartResults({
   ]);
 
   if (topArtists.length === 0 && topSongs.length === 0) {
-    return <p className={ui.emptyState}>{strings.noDataForMonth}</p>;
+    return (
+      <p className={ui.emptyState}>
+        <T>{(s) => s.noDataForMonth}</T>
+      </p>
+    );
   }
 
   const artistHref = (name: string) => `/artists/${encodeURIComponent(name)}`;
@@ -76,7 +88,7 @@ export async function ChartResults({
   return (
     <div className={styles.columns}>
       <RankedList
-        title={strings.topArtists}
+        title={<T>{(s) => s.topArtists}</T>}
         rows={topArtists.map((artist) => ({
           key: artist.name,
           name: artist.name,
@@ -85,7 +97,7 @@ export async function ChartResults({
         }))}
       />
       <RankedList
-        title={strings.topSongs}
+        title={<T>{(s) => s.topSongs}</T>}
         rows={topSongs.map((song) => ({
           key: `${song.title}-${song.artist}`,
           name: song.title,

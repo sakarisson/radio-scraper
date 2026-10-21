@@ -9,6 +9,8 @@ import {
 import * as styles from "@/styles/artists.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
+import { T } from "../components/T";
+import { Localized } from "../components/Localized";
 import { formatNumber } from "@/utils/format";
 import { getCurrentMonth } from "@/utils/months";
 import { Pagination } from "../components/Pagination";
@@ -52,16 +54,24 @@ export default async function ArtistsPage(props: Props) {
   return (
     <>
       <section className={ui.intro.page}>
-        <span className={ui.eyebrow}>{strings.artists}</span>
+        <span className={ui.eyebrow}>
+          <T>{(s) => s.artists}</T>
+        </span>
         <h1 className={ui.display.md}>
-          {strings.artistCount(formatNumber(totalCount ?? matchingCount))}
+          <T>
+            {(s, lang) =>
+              s.artistCount(formatNumber(totalCount ?? matchingCount, lang))
+            }
+          </T>
         </h1>
       </section>
 
       {trending.length > 0 && (
         <section className={ui.section.md}>
           <div className={ui.sectionHeader}>
-            <h2 className={ui.sectionTitle}>{strings.trending}</h2>
+            <h2 className={ui.sectionTitle}>
+              <T>{(s) => s.trending}</T>
+            </h2>
           </div>
           <div className={styles.trendingGrid}>
             {trending.map((artist, i) => (
@@ -74,7 +84,11 @@ export default async function ArtistsPage(props: Props) {
                 <span>
                   <span className={styles.trendingName}>{artist.name}</span>
                   <span className={styles.small}>
-                    {formatNumber(artist.playCount)} {strings.playsLabel}
+                    <T>
+                      {(s, lang) =>
+                        `${formatNumber(artist.playCount, lang)} ${s.playsLabel}`
+                      }
+                    </T>
                   </span>
                 </span>
               </Link>
@@ -86,16 +100,29 @@ export default async function ArtistsPage(props: Props) {
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader} style={{ alignItems: "center" }}>
           <h2 className={ui.sectionTitle}>
-            {query ? strings.resultsFor(query) : strings.allArtistsByPlays}
+            <T>
+              {(s) => (query ? s.resultsFor(query) : s.allArtistsByPlays)}
+            </T>
           </h2>
           <form action="/artists" method="GET" role="search">
-            <input
-              type="search"
-              name="q"
-              aria-label={strings.searchArtistsPlaceholder}
-              placeholder={strings.searchArtistsPlaceholder}
-              defaultValue={query ?? ""}
-              className={ui.searchInput}
+            <Localized
+              as="input"
+              props={{
+                type: "search",
+                name: "q",
+                defaultValue: query ?? "",
+                className: ui.searchInput,
+              }}
+              byLang={{
+                fo: {
+                  "aria-label": strings.fo.searchArtistsPlaceholder,
+                  placeholder: strings.fo.searchArtistsPlaceholder,
+                },
+                en: {
+                  "aria-label": strings.en.searchArtistsPlaceholder,
+                  placeholder: strings.en.searchArtistsPlaceholder,
+                },
+              }}
             />
           </form>
         </div>
@@ -109,20 +136,22 @@ export default async function ArtistsPage(props: Props) {
                 className={`${styles.leaderboardRow} ${ui.row} ${ui.blockLink}`}
               >
                 <span className={styles.small}>
-                  {formatNumber(offset + i + 1)}
+                  <T>{(_, lang) => formatNumber(offset + i + 1, lang)}</T>
                 </span>
                 <span className={styles.leaderboardName}>{artist.name}</span>
                 <span className={styles.small}>
-                  {formatNumber(artist.playCount)}
+                  <T>{(_, lang) => formatNumber(artist.playCount, lang)}</T>
                 </span>
               </Link>
             ))}
           </div>
         ) : (
           <p className={ui.emptyState}>
-            {query
-              ? strings.noArtistsFoundMatching(query)
-              : strings.noArtistsFound}
+            <T>
+              {(s) =>
+                query ? s.noArtistsFoundMatching(query) : s.noArtistsFound
+              }
+            </T>
           </p>
         )}
 
