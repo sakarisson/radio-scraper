@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { PlayingEvent } from './types';
 
-// Public AzuraCast server hosting Norðlýsið, FM98,7 and a few others.
-const AZURACAST_BASE_URL = 'https://liveradio.stream.fo';
+// Norðlýsið (Klaksvík) on the public AzuraCast server at liveradio.stream.fo.
+const NOW_PLAYING_URL = 'https://liveradio.stream.fo/api/nowplaying/nordlysid';
 
-// Studio software on these stations sometimes puts a playlist/show name in the
+// Studio software at Norðlýsið sometimes puts a playlist/show name in the
 // artist field and "Artist - Title" in the title field, e.g.
 // { artist: 'PoppList3', title: 'Enekk - Eru tit til' }.
 const PLAYLIST_ARTISTS = /^(popplist\d*|blanda)$/i;
@@ -33,7 +33,7 @@ const schema = z.object({
 // Metadata arrives with non-ASCII characters escaped as "%uXXXX" (e.g.
 // "Fr%u00e6ndur"). "%ufffd" means the character was already lost upstream and
 // decodes to U+FFFD, which we keep so the raw intent stays visible.
-export const decodePercentU = (str: string) =>
+const decodePercentU = (str: string) =>
   str.replace(/%u([0-9a-f]{4})/gi, (_, hex: string) =>
     String.fromCharCode(parseInt(hex, 16))
   );
@@ -54,7 +54,7 @@ const clean = (str: string | null | undefined) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-export const normalizeAzuraCastSong = (
+export const normalizeNordlysidSong = (
   rawArtist: string | null | undefined,
   rawTitle: string | null | undefined
 ): { artist: string; title: string } | null => {
@@ -76,10 +76,9 @@ export const normalizeAzuraCastSong = (
   return { artist, title };
 };
 
-export const fetchAzuraCast = async (shortcode: string): Promise<PlayingEvent> => {
-  const url = `${AZURACAST_BASE_URL}/api/nowplaying/${encodeURIComponent(shortcode)}`;
-  const data = await fetch(url).then((response) => {
-    if (!response.ok) throw new Error(`AzuraCast ${shortcode}: HTTP ${response.status}`);
+export const fetchNordlysid = async (): Promise<PlayingEvent> => {
+  const data = await fetch(NOW_PLAYING_URL).then((response) => {
+    if (!response.ok) throw new Error(`nordlysid: HTTP ${response.status}`);
     return response.json();
   });
 
@@ -87,7 +86,7 @@ export const fetchAzuraCast = async (shortcode: string): Promise<PlayingEvent> =
   const nowPlaying = parsed.now_playing;
   if (!nowPlaying) return null;
 
-  const song = normalizeAzuraCastSong(nowPlaying.song.artist, nowPlaying.song.title);
+  const song = normalizeNordlysidSong(nowPlaying.song.artist, nowPlaying.song.title);
   if (!song) return null;
 
   // Keep only the relevant part of the response; song_history and station
