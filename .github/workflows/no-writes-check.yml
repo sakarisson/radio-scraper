@@ -77,7 +77,7 @@ jobs:
       - name: Check if already alerted
         id: cache
         if: failure()
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: /tmp/alert-marker
           key: alert-sent-${{ steps.check.outputs.failure_key }}
@@ -90,7 +90,7 @@ jobs:
 
       - name: Send alert email
         if: failure() && steps.cache.outputs.cache-hit != 'true'
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v22
         with:
           server_address: smtp.gmail.com
           server_port: 465
@@ -110,7 +110,7 @@ jobs:
       # sees the cache hit and stays quiet for the rest of this incident.
       - name: Mark as alerted
         if: failure() && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: /tmp/alert-marker
           key: alert-sent-${{ steps.check.outputs.failure_key }}
@@ -131,7 +131,7 @@ jobs:
 
       - name: Send recovery email
         if: success() && steps.recovery.outputs.has_prior_alert == 'true'
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v22
         with:
           server_address: smtp.gmail.com
           server_port: 465
