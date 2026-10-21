@@ -13,7 +13,8 @@ All 5 stations stream via two Icecast 2.4.4 servers:
 | Server | Stations | Status endpoint |
 |--------|----------|-----------------|
 | `stream-secure.midlar.fo` (HTTPS proxy for `stream2.midlar.fo:8000`) | VoxPop, FM1, (also Ras 2) | `https://stream-secure.midlar.fo/status-json.xsl` |
-| `srv.stream.fo:8000` | FM98,7 (Klaksvík), Lindin | `http://srv.stream.fo:8000/status-json.xsl` |
+| `srv.stream.fo:8000` | Lindin (FM98,7 previously listed here, see below) | `http://srv.stream.fo:8000/status-json.xsl` |
+| `liveradio.stream.fo` (AzuraCast) | Norðlýsið, FM98,7 (also Tulking, Jolarasin, Stream.fo) | `https://liveradio.stream.fo/api/nowplaying/{shortcode}` |
 | `player.sjey.fo` (standalone PHP) | SJEY | `https://player.sjey.fo/playing.php` |
 
 ### Now-Playing Metadata Availability
@@ -39,6 +40,28 @@ All 5 stations stream via two Icecast 2.4.4 servers:
 ### Key Technical Insight
 
 The existing Ras 2 integration uses a **radio.co API** (`https://public.radio.co/api/v2/s4d14b9fcc/track/current`), NOT Icecast metadata, even though Ras 2 also streams via Midlar's Icecast. This suggests Midlar's Icecast may not reliably carry track metadata. The new stations likely need a different approach.
+
+### Update (2026-10-18): AzuraCast server on liveradio.stream.fo
+
+`https://liveradio.stream.fo/api/stations` lists five public stations: `nordlysid`, `fm98,7`, `tulking`, `jolarasin`, `stream.fo`. `GET /api/nowplaying/{shortcode}` returns structured JSON (`now_playing.song.artist` / `.title`, `played_at`, `live.is_live`, plus a short `song_history`). No auth needed.
+
+- **Norðlýsið** and **FM98,7** carry real track metadata. Shared fetcher: `packages/scraper/src/azuracast.ts`. Norðlýsið is shipped; FM98,7 is waiting on more cleanup (see its section).
+- **Tulking** and **Stream.fo** only played "Live.fo - Free ambient sound N" filler when checked. Not worth adding.
+- **Jolarasin** not checked yet (likely a seasonal Christmas stream).
+- **Lindin is not on this server.**
+
+Metadata quirks seen (handled in `normalizeAzuraCastSong`):
+
+| Quirk | Example | Handling |
+|-------|---------|----------|
+| Non-ASCII escaped as `%uXXXX` | `Fr%u00e6ndur`, `Kj%u00f8lar` | Decoded → `Frændur`, `Kjølar` |
+| Character lost upstream (`%ufffd`) | `Heine L%ufffdtzen`, `Ebenezerk%ufffdri%ufffd` | Decoded to `�` and kept. **Open question**: store, skip, or repair? |
+| Playlist/show name in artist field (live studio) | `PoppList3` / `Enekk - Eru tit til` | Artists matching `PoppList\d*` or `Blanda` → split title on first ` - ` |
+| Untagged files | `Track  6` | Skipped |
+| Empty artist | FM98,7: `''` / `Magni Christiansen` | Skipped |
+| Junk after a NUL byte | `I Am\x00e`, `Magni Christiansen\x00t` | Truncated at the NUL |
+| Text misread as UTF-16 | `潇灳汥吠돃慮⁲2?` (= "Gospel Tónar 2") | Skipped |
+| Other control characters | | Stripped |
 
 ---
 
@@ -225,8 +248,16 @@ Same three options as VoxPop, using:
 ## Station 4: FM98,7 (Klaksvík)
 
 **Slug:** `fm987`
-**Type:** Local community music station
-**Why fourth:** Different Icecast server (stream.fo) — might behave differently from Midlar.
+**Type:** Christian music station (observed: gospel/CCM, e.g. Michael W. Smith, Amy Grant, Faroese choirs)
+
+> **Update (2026-10-18):** FM98,7 now streams from the AzuraCast server (`liveradio.stream.fo`, shortcode `fm98,7`) with structured metadata and can use the shared AzuraCast fetcher. The Icecast options below are superseded.
+>
+> **Status (2026-10-21): not shipped yet.** A 3½-day local trial (1,016 tracks) kept 72%, but only 74% of kept tracks were clean. Its tags look like old 30-character ID3v1 fields mixed with newer tags. To do before shipping:
+> - [ ] Strip album/year from titles: `Allan veg / (Her er løtan) / 2008` → `Allan veg` (137 tracks). Only when the title ends in a year, since real titles can contain ` / `.
+> - [ ] Drop the duplicated tag value after `; `: `Hin Gamli Maðurin; Hin Gamli Maðurin` (47 tracks)
+> - [ ] Strip leading track numbers: `02 - Dómadagsmorgun` (5 tracks)
+> - [ ] Decide what to do about stray trailing characters on artists (`Magni Christiansent`, `SALTT`, `Alex Bærendsen¾`, ~25 duplicate artists). They can't be detected in the fetcher; they'd need merging in the database.
+> - [ ] Accept or contact the station about the 28% of tracks with an empty artist and only the artist name in the title (song name missing), and titles cut at 30 characters.
 
 ### Metadata Source (TBD — needs spike)
 
@@ -260,11 +291,35 @@ Note: The stream.fo Icecast server uses `http://localhost:8000` in its listenurl
 
 ---
 
+## Station 4b: Norðlýsið (Klaksvík)
+
+**Slug:** `nordlysid`
+**Type:** News outlet (nordlysid.fo) with a music radio stream; has live studio shows
+**Metadata source:** AzuraCast, `https://liveradio.stream.fo/api/nowplaying/nordlysid`
+
+### Checklist
+
+- [x] **Spike**: endpoint confirmed working, structured artist/title
+- [x] **Local trial** (2026-10-18 → 21, 1,199 tracks): 77% kept, 98% of kept tracks clean. About 340–400 tracks a day, around the clock, mostly live from the studio.
+  - Rejected: empty artist with only the artist name in the title (210), `Track N` (48), `Blanda` with no ` - ` in the title (18)
+- [x] **Scraper changes**
+  - [x] Add `'nordlysid'` to `StationSlug`
+  - [x] Shared fetcher `fetchAzuraCast(shortcode)` in `azuracast.ts` (base URL hard-coded: it's public, no env var needed)
+- [x] **Web UI**: add station hue (`nordlysid: 320`)
+- [ ] **Deploy**: no Fly.io secret needed. The first play auto-creates the station row in prod.
+- [ ] **Follow-ups** (minor, seen in the trial)
+  - [ ] `isLikelyAd.ts`: `Komið øll við …` interview segments and `Frískt Lot` shows; check what `Útvarpsfløga` is
+  - [ ] Compilation `Ung um aldarmótið` has `Song - Artist` titles (reversed)
+  - [ ] Titles that repeat the artist: `All that rain` / `All That Rain - Destination`
+  - [ ] Stray trailing punctuation: `Drowning(`, `Heaven is my goal.`
+
+---
+
 ## Station 5: Lindin
 
 **Slug:** `lindin`
 **Type:** Christian radio (Kristiligt Kringvarp)
-**Why last:** Streams on the same server as FM98,7 — approach proven by then. Mixed content (gospel music + religious programming).
+**Why last:** Mixed content (gospel music + religious programming). Note: FM98,7 has moved to AzuraCast, so Lindin is now alone on `srv.stream.fo:8000` and can't reuse that approach.
 
 ### Metadata Source (TBD — depends on FM98,7 spike)
 
