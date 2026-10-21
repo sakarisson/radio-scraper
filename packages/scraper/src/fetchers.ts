@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import EventSource from 'eventsource';
 import { PlayingEvent, StationSlug } from './types';
-import { fetchAzuraCast } from './azuracast';
+import { fetchNordlysid } from './nordlysid';
+import { fetchFm987 } from './fm987';
 
 const ras2Url = process.env.STATION_URL_RAS_2;
 const kvfUrl = process.env.STATION_URL_KVF;
@@ -170,6 +171,10 @@ export const fetchers: Array<{
   },
   {
     slug: 'nordlysid',
-    fetchData: () => fetchAzuraCast('nordlysid'),
+    fetchData: fetchNordlysid,
+  },
+  {
+    slug: 'fm987',
+    fetchData: fetchFm987,
   },
 ];
