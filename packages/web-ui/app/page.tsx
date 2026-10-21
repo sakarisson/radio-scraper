@@ -13,7 +13,7 @@ import { StationDot, StationLink } from "./components/Station";
 import { T } from "./components/T";
 import { clockTime, formatNumber, timeAgo } from "@/utils/format";
 import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
-import { compareStations, isStale } from "@/utils/stations";
+import { compareStations, isStale, stationName } from "@/utils/stations";
 
 export default async function Home() {
   // Render per request: the page shows times relative to now. The data
@@ -80,7 +80,7 @@ export default async function Home() {
                   href={`/stations/${play.station}`}
                   className={styles.stationCardLink}
                 >
-                  {play.station}
+                  {stationName(play.station)}
                 </Link>
                 <span className={styles.stationCardAgo}>
                   <T>{(_, lang) => timeAgo(play.time_played, lang)}</T>

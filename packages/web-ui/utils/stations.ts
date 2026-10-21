@@ -1,18 +1,25 @@
 import { vars } from "@/styles/theme.css";
 
-const hues: Record<string, number> = {
-  ras2: 20,
-  kvf: 245,
-  kvf2: 175,
-  sjey: 95,
-  nordlysid: 320,
-  fm987: 135,
+// Display name and color hue per station slug. The order here is the order
+// stations are listed in.
+const stations: Record<string, { name: string; hue: number }> = {
+  ras2: { name: "Rás 2", hue: 20 },
+  kvf: { name: "KVF", hue: 245 },
+  kvf2: { name: "KVF2", hue: 175 },
+  sjey: { name: "SJEY", hue: 95 },
+  nordlysid: { name: "Norðlýsið", hue: 320 },
+  fm987: { name: "FM98,7", hue: 135 },
 };
 
-const order = Object.keys(hues);
+const order = Object.keys(stations);
+
+/** The station's proper name, e.g. "nordlysid" → "Norðlýsið". Falls back to the slug. */
+export function stationName(slug: string) {
+  return stations[slug]?.name ?? slug;
+}
 
 export function stationColor(slug: string) {
-  const hue = hues[slug];
+  const hue = stations[slug]?.hue;
   return hue === undefined ? vars.color.muted : `oklch(0.68 0.1 ${hue})`;
 }
 

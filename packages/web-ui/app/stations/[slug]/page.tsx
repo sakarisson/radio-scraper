@@ -13,7 +13,7 @@ import { formatNumber, formatShare, playTime, timeAgo } from "@/utils/format";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { StationDot } from "@/app/components/Station";
 import { Stats } from "@/app/components/Stats";
-import { isStale } from "@/utils/stations";
+import { isStale, stationName } from "@/utils/stations";
 
 // Only the most recent plays are listed, with no paging back through
 // history, so the full play log can't be scraped page by page.
@@ -59,7 +59,7 @@ export default async function StationDetailPage({
       <section className={ui.intro.detail}>
         <div className={styles.titleRow}>
           <StationDot station={slug} size="lg" />
-          <h1 className={ui.display.lg}>{slug}</h1>
+          <h1 className={ui.display.lg}>{stationName(slug)}</h1>
         </div>
         <div className={ui.introStats}>
           <Stats
@@ -110,7 +110,7 @@ export default async function StationDetailPage({
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader}>
           <h2 className={ui.sectionTitle}>
-            <T>{(s) => s.recentPlaysOn(slug)}</T>
+            <T>{(s) => s.recentPlaysOn(stationName(slug))}</T>
           </h2>
         </div>
         {plays.map((play) => (
