@@ -1,16 +1,18 @@
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
-import { T } from "../components/T";
-import { SkeletonRows } from "../components/Skeleton";
+import { SkeletonRows } from "@/app/components/Skeleton";
+import { getLang } from "@/utils/lang";
+import { strings } from "@/utils/strings";
 
-export function ChartResultsSkeleton() {
+export async function ChartResultsSkeleton() {
+  const s = strings[await getLang()];
   return (
     <div className={styles.columns}>
       {(["topArtists", "topSongs"] as const).map((key) => (
         <div key={key}>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>
-              <T>{(s) => s[key]}</T>
+              {s[key]}
             </h2>
           </div>
           <SkeletonRows count={10} height={36} />

@@ -4,7 +4,7 @@ import {
   SkeletonBlock,
   SkeletonRows,
   SkeletonSectionTitle,
-} from "./components/Skeleton";
+} from "@/app/components/Skeleton";
 
 export default function Loading() {
   return (

@@ -5,8 +5,10 @@ import {
 } from "@/utils/database";
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
-import { T } from "../components/T";
 import { formatNumber } from "@/utils/format";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 
 type Row = {
   key: string;
@@ -16,13 +18,15 @@ type Row = {
   playCount: number;
 };
 
-function RankedList({
+async function RankedList({
   title,
   rows,
 }: {
   title: React.ReactNode;
   rows: Row[];
 }) {
+  const lang = await getLang();
+  const s = strings[lang];
   const max = Math.max(1, ...rows.map((r) => r.playCount));
   return (
     <div>
@@ -51,9 +55,7 @@ function RankedList({
             </div>
           </div>
           <span className={styles.rankPlays}>
-            <T>
-              {(s, lang) => `${formatNumber(row.playCount, lang)} ${s.playsLabel}`}
-            </T>
+            {`${formatNumber(row.playCount, lang)} ${s.playsLabel}`}
           </span>
         </div>
       ))}
@@ -70,6 +72,9 @@ export async function ChartResults({
   month: number;
   selectedSlugs?: string[];
 }) {
+  const lang = await getLang();
+  const s = strings[lang];
+  const r = routes(lang);
   const [topArtists, topSongs] = await Promise.all([
     getTopArtistsForMonth(year, month, 10, selectedSlugs),
     getTopSongsForMonth(year, month, 10, selectedSlugs),
@@ -78,31 +83,29 @@ export async function ChartResults({
   if (topArtists.length === 0 && topSongs.length === 0) {
     return (
       <p className={ui.emptyState}>
-        <T>{(s) => s.noDataForMonth}</T>
+        {s.noDataForMonth}
       </p>
     );
   }
 
-  const artistHref = (name: string) => `/artists/${encodeURIComponent(name)}`;
-
   return (
     <div className={styles.columns}>
       <RankedList
-        title={<T>{(s) => s.topArtists}</T>}
+        title={s.topArtists}
         rows={topArtists.map((artist) => ({
           key: artist.name,
           name: artist.name,
-          href: artistHref(artist.name),
+          href: r.artist(artist.name),
           playCount: artist.playCount,
         }))}
       />
       <RankedList
-        title={<T>{(s) => s.topSongs}</T>}
+        title={s.topSongs}
         rows={topSongs.map((song) => ({
           key: `${song.title}-${song.artist}`,
           name: song.title,
-          href: `${artistHref(song.artist)}/${encodeURIComponent(song.title)}`,
-          artist: { name: song.artist, href: artistHref(song.artist) },
+          href: r.song(song.artist, song.title),
+          artist: { name: song.artist, href: r.artist(song.artist) },
           playCount: song.playCount,
         }))}
       />

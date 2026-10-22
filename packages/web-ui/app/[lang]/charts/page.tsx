@@ -7,12 +7,13 @@ import { getAllStationSlugs, getEarliestPlayDate } from "@/utils/database";
 import { faroeParts } from "@/utils/time";
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
-import { visuallyHidden } from "@/styles/i18n.css";
-import { T } from "../components/T";
 import { capitalize } from "@/utils/format";
 import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
-import { StationDot } from "../components/Station";
+import { StationDot } from "@/app/components/Station";
 import { stationName } from "@/utils/stations";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 import { vars } from "@/styles/theme.css";
 import { ChartResults } from "./ChartResults";
 import { ChartResultsSkeleton } from "./ChartResultsSkeleton";
@@ -57,6 +58,7 @@ function getNextMonth(year: number, month: number) {
 }
 
 function buildChartsHref(
+  basePath: string,
   year: number,
   month: number,
   stations: string | undefined
@@ -64,7 +66,7 @@ function buildChartsHref(
   const params = new URLSearchParams();
   params.set("month", formatMonthParam(year, month));
   if (stations) params.set("stations", stations);
-  return `/charts?${params.toString()}`;
+  return `${basePath}?${params.toString()}`;
 }
 
 export default async function ChartsPage({
@@ -75,6 +77,9 @@ export default async function ChartsPage({
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
+  const chartsPath = routes(lang).charts;
   const parsed = paramsSchema.safeParse(await searchParams);
   const monthParam = parsed.success ? parsed.data?.month : undefined;
   const stationsParam = parsed.success ? parsed.data?.stations : undefined;
@@ -123,7 +128,7 @@ export default async function ChartsPage({
       <section className={`${ui.intro.page} ${styles.header}`}>
         <div>
           <span className={ui.eyebrow}>
-            <T>{(s) => s.charts}</T>
+            {s.charts}
           </span>
           <div className={styles.monthPicker}>
             {isBeforeFirstPrev ? (
@@ -133,6 +138,7 @@ export default async function ChartsPage({
             ) : (
               <Link
                 href={buildChartsHref(
+                  chartsPath,
                   prev.year,
                   prev.month,
                   currentStationsParam
@@ -140,17 +146,13 @@ export default async function ChartsPage({
                 className={styles.monthNav.enabled}
               >
                 <span aria-hidden>&#8249;</span>
-                <span className={visuallyHidden}>
-                  <T>{(s) => s.previousMonth}</T>
+                <span className={ui.visuallyHidden}>
+                  {s.previousMonth}
                 </span>
               </Link>
             )}
             <h1 className={ui.display.md}>
-              <T>
-                {(_, lang) =>
-                  capitalize(`${MONTH_NAMES[lang][month - 1]} ${year}`)
-                }
-              </T>
+              {capitalize(`${MONTH_NAMES[lang][month - 1]} ${year}`)}
             </h1>
             {isFutureNext ? (
               <span className={styles.monthNav.disabled} aria-hidden>
@@ -159,6 +161,7 @@ export default async function ChartsPage({
             ) : (
               <Link
                 href={buildChartsHref(
+                  chartsPath,
                   next.year,
                   next.month,
                   currentStationsParam
@@ -166,8 +169,8 @@ export default async function ChartsPage({
                 className={styles.monthNav.enabled}
               >
                 <span aria-hidden>&#8250;</span>
-                <span className={visuallyHidden}>
-                  <T>{(s) => s.nextMonth}</T>
+                <span className={ui.visuallyHidden}>
+                  {s.nextMonth}
                 </span>
               </Link>
             )}
@@ -176,7 +179,7 @@ export default async function ChartsPage({
 
         <div className={styles.filters}>
           <Link
-            href={buildChartsHref(year, month, undefined)}
+            href={buildChartsHref(chartsPath, year, month, undefined)}
             className={styles.filter[!currentStationsParam ? "active" : "idle"]}
             scroll={false}
           >
@@ -184,7 +187,7 @@ export default async function ChartsPage({
               className={ui.dot.sm}
               style={{ background: vars.color.ink }}
             />
-            <T>{(s) => s.allStations}</T>
+            {s.allStations}
           </Link>
           {allSlugs.map((slug) => {
             const isActive = selectedSlugs?.includes(slug) ?? false;
@@ -201,7 +204,7 @@ export default async function ChartsPage({
             return (
               <Link
                 key={slug}
-                href={buildChartsHref(year, month, nextSlugs)}
+                href={buildChartsHref(chartsPath, year, month, nextSlugs)}
                 className={styles.filter[isActive ? "active" : "idle"]}
                 scroll={false}
                 // Every combination and order of stations is a separate URL,

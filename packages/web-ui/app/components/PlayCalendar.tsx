@@ -3,8 +3,8 @@ import * as ui from "@/styles/ui.css";
 import { formatNumber } from "@/utils/format";
 import type { Lang } from "@/utils/i18n";
 import { MONTH_NAMES } from "@/utils/months";
+import { getLang } from "@/utils/lang";
 import { strings } from "@/utils/strings";
-import { T } from "./T";
 import { CalendarCells, type Level } from "./CalendarCells";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -53,13 +53,15 @@ const fromKey = (key: string) => new Date(`${key}T00:00:00Z`);
  * GitHub-style calendar of how often a song or artist was played each day over
  * the past year, one column per week (Monday to Sunday), ending today.
  */
-export function PlayCalendar({
+export async function PlayCalendar({
   daily,
   scale = "song",
 }: {
   daily: Record<string, number>;
   scale?: keyof typeof SCALES;
 }) {
+  const lang = await getLang();
+  const s = strings[lang];
   const levels: Levels = SCALES[scale];
   const today = faroeDate(new Date());
   const end = fromKey(today);
@@ -96,18 +98,13 @@ export function PlayCalendar({
 
   const weeks = days.length / 7;
   const columns = { gridTemplateColumns: `repeat(${weeks}, minmax(0, 1fr))` };
-  const summary = (lang: Lang) =>
-    strings[lang].playsInPastYear(formatNumber(total, lang), total === 1);
+  const summary = s.playsInPastYear(formatNumber(total, lang), total === 1);
 
   return (
     <>
       <div className={ui.sectionHeader}>
-        <h2 className={ui.sectionTitle}>
-          <T>{(s) => s.playsPerDay}</T>
-        </h2>
-        <span className={ui.aside}>
-          <T>{(_, lang) => summary(lang)}</T>
-        </span>
+        <h2 className={ui.sectionTitle}>{s.playsPerDay}</h2>
+        <span className={ui.aside}>{summary}</span>
       </div>
       <div className={styles.scroller}>
         <div className={styles.body}>
@@ -118,28 +115,25 @@ export function PlayCalendar({
                 className={styles.monthLabel}
                 style={{ gridColumn: column, gridRow: 1 }}
               >
-                <T>{(_, lang) => MONTH_NAMES[lang][month].slice(0, 3)}</T>
+                {MONTH_NAMES[lang][month].slice(0, 3)}
               </span>
             ))}
           </div>
           <div className={styles.weekdays} aria-hidden>
-            {WEEKDAYS.fo.map((_, i) => (
-              <span key={i}>
-                <T>{(_, lang) => WEEKDAYS[lang][i]}</T>
-              </span>
+            {WEEKDAYS[lang].map((day, i) => (
+              <span key={i}>{day}</span>
             ))}
           </div>
           <CalendarCells
             days={days}
             columns={columns}
-            summary={{ fo: summary("fo"), en: summary("en") }}
+            summary={summary}
+            lang={lang}
           />
         </div>
       </div>
       <div className={styles.legend}>
-        <span>
-          <T>{(s) => s.playsPerDayLegend}</T>
-        </span>
+        <span>{s.playsPerDayLegend}</span>
         {[...levels].reverse().map(({ level, label }) => (
           <span key={level} className={styles.legendItem}>
             <span className={`${styles.cell[level]} ${styles.legendSwatch}`} />

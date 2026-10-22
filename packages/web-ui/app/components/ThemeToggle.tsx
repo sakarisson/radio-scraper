@@ -1,7 +1,8 @@
 "use client";
 
 import * as styles from "@/styles/layout.css";
-import { T } from "./T";
+import { strings } from "@/utils/strings";
+import type { Lang } from "@/utils/i18n";
 import { THEME_STORAGE_KEY } from "@/utils/theme";
 
 function currentTheme() {
@@ -12,7 +13,9 @@ function currentTheme() {
     : "light";
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ lang }: { lang: Lang }) {
+  const s = strings[lang];
+
   function toggle() {
     const next = currentTheme() === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
@@ -23,8 +26,8 @@ export function ThemeToggle() {
 
   return (
     <button type="button" onClick={toggle} className={styles.themeToggle}>
-      <span className={styles.showWhenLight}><T>{(s) => s.themeDark}</T></span>
-      <span className={styles.showWhenDark}><T>{(s) => s.themeLight}</T></span>
+      <span className={styles.showWhenLight}>{s.themeDark}</span>
+      <span className={styles.showWhenDark}>{s.themeLight}</span>
     </button>
   );
 }

@@ -1,14 +1,13 @@
 import Link from "next/link";
 import * as ui from "@/styles/ui.css";
-import { T } from "./T";
+import { getLang } from "@/utils/lang";
+import { strings } from "@/utils/strings";
 
 type Props = {
   currentPage: number;
   totalPages: number;
   basePath: string;
   extraParams?: Record<string, string | undefined>;
-  prevLabel?: React.ReactNode;
-  nextLabel?: React.ReactNode;
 };
 
 function buildHref(
@@ -27,44 +26,41 @@ function buildHref(
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-export function Pagination({
+export async function Pagination({
   currentPage,
   totalPages,
   basePath,
   extraParams,
-  prevLabel = <T>{(s) => s.previousPage}</T>,
-  nextLabel = <T>{(s) => s.nextPage}</T>,
 }: Props) {
   if (totalPages <= 1) return null;
+  const s = strings[await getLang()];
 
   const hasPrev = currentPage > 0;
   const hasNext = currentPage < totalPages - 1;
 
   return (
     <div className={ui.pagination}>
-      <span>
-        <T>{(s) => s.pageOf(currentPage + 1, totalPages)}</T>
-      </span>
+      <span>{s.pageOf(currentPage + 1, totalPages)}</span>
       <div className={ui.paginationButtons}>
         {hasPrev ? (
           <Link
             href={buildHref(basePath, currentPage - 1, extraParams)}
             className={ui.pill.enabled}
           >
-            {prevLabel}
+            {s.previousPage}
           </Link>
         ) : (
-          <span className={ui.pill.disabled}>{prevLabel}</span>
+          <span className={ui.pill.disabled}>{s.previousPage}</span>
         )}
         {hasNext ? (
           <Link
             href={buildHref(basePath, currentPage + 1, extraParams)}
             className={ui.pill.enabled}
           >
-            {nextLabel}
+            {s.nextPage}
           </Link>
         ) : (
-          <span className={ui.pill.disabled}>{nextLabel}</span>
+          <span className={ui.pill.disabled}>{s.nextPage}</span>
         )}
       </div>
     </div>

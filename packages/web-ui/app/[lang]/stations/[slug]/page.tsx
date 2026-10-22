@@ -8,8 +8,10 @@ import {
 } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
-import { T } from "@/app/components/T";
 import { formatNumber, formatShare, playTime, timeAgo } from "@/utils/format";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { StationDot } from "@/app/components/Station";
 import { Stats } from "@/app/components/Stats";
@@ -27,6 +29,9 @@ export default async function StationDetailPage({
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
+  const r = routes(lang);
   const { slug: rawSlug } = await params;
   const slug = decodeURIComponent(rawSlug);
 
@@ -43,16 +48,11 @@ export default async function StationDetailPage({
   const totalCount = station.playCount;
   const latestPlay = plays[0];
 
-  const songHref = (artist: string, title: string) =>
-    `/artists/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
-  const artistHref = (artist: string) =>
-    `/artists/${encodeURIComponent(artist)}`;
-
   return (
     <>
       <Breadcrumbs
         items={[
-          { href: "/stations", label: <T>{(s) => s.stationsTitle}</T> },
+          { href: r.stations, label: s.stationsTitle },
         ]}
       />
 
@@ -65,12 +65,12 @@ export default async function StationDetailPage({
           <Stats
             items={[
               {
-                value: <T>{(_, lang) => formatNumber(totalCount, lang)}</T>,
-                label: <T>{(s) => s.plays}</T>,
+                value: formatNumber(totalCount, lang),
+                label: s.plays,
               },
               {
                 value: formatShare(totalCount, allPlaysCount),
-                label: <T>{(s) => s.ofAllPlays}</T>,
+                label: s.ofAllPlays,
               },
             ]}
           />
@@ -83,21 +83,17 @@ export default async function StationDetailPage({
             className={`${styles.latestCard} ${ui.softCard} ${isStale(latestPlay.time_played) ? styles.stale : ""}`}
           >
             <span className={ui.aside}>
-              <T>
-                {(s, lang) =>
-                  s.lastPlayedCard(timeAgo(latestPlay.time_played, lang))
-                }
-              </T>
+              {s.lastPlayedCard(timeAgo(latestPlay.time_played, lang))}
             </span>
             <div className={ui.itemText} style={{ gap: 6 }}>
               <Link
-                href={songHref(latestPlay.artist, latestPlay.title)}
+                href={r.song(latestPlay.artist, latestPlay.title)}
                 className={styles.latestSong}
               >
                 {latestPlay.title}
               </Link>
               <Link
-                href={artistHref(latestPlay.artist)}
+                href={r.artist(latestPlay.artist)}
                 className={styles.latestArtist}
               >
                 {latestPlay.artist}
@@ -110,22 +106,22 @@ export default async function StationDetailPage({
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader}>
           <h2 className={ui.sectionTitle}>
-            <T>{(s) => s.recentPlaysOn(stationName(slug))}</T>
+            {s.recentPlaysOn(stationName(slug))}
           </h2>
         </div>
         {plays.map((play) => (
           <div key={play.id} className={`${styles.playRow} ${ui.row}`}>
             <span className={ui.aside}>
-              <T>{(_, lang) => playTime(play.time_played, lang)}</T>
+              {playTime(play.time_played, lang)}
             </span>
             <div className={ui.itemText}>
               <Link
-                href={songHref(play.artist, play.title)}
+                href={r.song(play.artist, play.title)}
                 className={ui.itemTitle}
               >
                 {play.title}
               </Link>
-              <Link href={artistHref(play.artist)} className={ui.itemSub}>
+              <Link href={r.artist(play.artist)} className={ui.itemSub}>
                 {play.artist}
               </Link>
             </div>

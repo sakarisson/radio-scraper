@@ -1,17 +1,19 @@
 import * as styles from "@/styles/artists.css";
 import * as ui from "@/styles/ui.css";
-import { T } from "@/app/components/T";
 import {
   SkeletonBlock,
   SkeletonRows,
   SkeletonSectionTitle,
-} from "../components/Skeleton";
+} from "@/app/components/Skeleton";
+import { getLang } from "@/utils/lang";
+import { strings } from "@/utils/strings";
 
-export default function Loading() {
+export default async function Loading() {
+  const s = strings[await getLang()];
   return (
     <>
       <section className={ui.intro.page}>
-        <span className={ui.eyebrow}><T>{(s) => s.artists}</T></span>
+        <span className={ui.eyebrow}>{s.artists}</span>
         <SkeletonBlock width={360} height={56} />
       </section>
       <section className={ui.section.md}>

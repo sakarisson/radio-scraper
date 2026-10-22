@@ -1,6 +1,6 @@
 import * as ui from "@/styles/ui.css";
 import { ChartResultsSkeleton } from "./ChartResultsSkeleton";
-import { SkeletonBlock } from "../components/Skeleton";
+import { SkeletonBlock } from "@/app/components/Skeleton";
 
 export default function Loading() {
   return (

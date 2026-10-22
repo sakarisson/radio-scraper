@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { getSongPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
-import { T } from "@/app/components/T";
 import {
   clockTime,
   formatNumber,
@@ -12,6 +11,9 @@ import {
   shortDate,
   timeAgo,
 } from "@/utils/format";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
@@ -26,6 +28,9 @@ export default async function SongPage({
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
+  const r = routes(lang);
   const { slug, song } = await params;
   const artistName = decodeURIComponent(slug);
   const songTitle = decodeURIComponent(song);
@@ -36,13 +41,13 @@ export default async function SongPage({
   }
 
   const { plays, totalCount, playRange, stationBreakdown, dailyPlays } = page;
-  const artistHref = `/artists/${slug}`;
+  const artistHref = r.artist(artistName);
 
   return (
     <>
       <Breadcrumbs
         items={[
-          { href: "/artists", label: <T>{(s) => s.artists}</T> },
+          { href: r.artists, label: s.artists },
           { href: artistHref, label: artistName },
         ]}
       />
@@ -56,26 +61,18 @@ export default async function SongPage({
           <Stats
             items={[
               {
-                value: <T>{(_, lang) => formatNumber(totalCount, lang)}</T>,
-                label: <T>{(s) => s.plays}</T>,
+                value: formatNumber(totalCount, lang),
+                label: s.plays,
               },
               ...(playRange
                 ? [
                     {
-                      value: (
-                        <T>
-                          {(_, lang) => relativeTime(playRange.firstPlayed, lang)}
-                        </T>
-                      ),
-                      label: <T>{(s) => s.firstPlayed}</T>,
+                      value: relativeTime(playRange.firstPlayed, lang),
+                      label: s.firstPlayed,
                     },
                     {
-                      value: (
-                        <T>
-                          {(_, lang) => relativeTime(playRange.lastPlayed, lang)}
-                        </T>
-                      ),
-                      label: <T>{(s) => s.lastPlayed}</T>,
+                      value: relativeTime(playRange.lastPlayed, lang),
+                      label: s.lastPlayed,
                     },
                   ]
                 : []),
@@ -92,7 +89,7 @@ export default async function SongPage({
         <section className={ui.section.sm}>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>
-              <T>{(s) => s.playsByStation}</T>
+              {s.playsByStation}
             </h2>
           </div>
           <StationSplit breakdown={stationBreakdown} />
@@ -102,7 +99,7 @@ export default async function SongPage({
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader}>
           <h2 className={ui.sectionTitle}>
-            <T>{(s) => s.recentPlays}</T>
+            {s.recentPlays}
           </h2>
         </div>
         <div
@@ -115,14 +112,14 @@ export default async function SongPage({
           {plays.map((play) => (
             <div key={play.id} className={`${styles.songPlay} ${ui.row}`}>
               <span className={styles.songPlayDay}>
-                <T>{(_, lang) => shortDate(play.time_played, lang)}</T>
+                {shortDate(play.time_played, lang)}
               </span>
               <span className={styles.songPlayTime}>
                 {clockTime(play.time_played)}
               </span>
               <StationLink station={play.station} />
               <span className={styles.songPlayAgo}>
-                <T>{(_, lang) => timeAgo(play.time_played, lang)}</T>
+                {timeAgo(play.time_played, lang)}
               </span>
             </div>
           ))}

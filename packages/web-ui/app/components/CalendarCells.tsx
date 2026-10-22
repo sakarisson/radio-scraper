@@ -1,11 +1,8 @@
-"use client";
-
 import * as styles from "@/styles/play-calendar.css";
 import { formatNumber } from "@/utils/format";
 import type { Lang } from "@/utils/i18n";
 import { MONTH_NAMES } from "@/utils/months";
 import { strings } from "@/utils/strings";
-import { useLang } from "./useLang";
 
 export type Level = keyof typeof styles.cell;
 
@@ -37,26 +34,23 @@ function tooltip(count: number, key: string, lang: Lang) {
   return `${n} ${plays} · ${date}`;
 }
 
-/**
- * The calendar's day cells. A client component so that the tooltips and the
- * summary for screen readers follow the visitor's language.
- */
 export function CalendarCells({
   days,
   columns,
   summary,
+  lang,
 }: {
   days: { key: string; count: number; level: Level }[];
   columns: React.CSSProperties;
-  summary: Record<Lang, string>;
+  summary: string;
+  lang: Lang;
 }) {
-  const lang = useLang();
   return (
     <div
       className={styles.cells}
       style={columns}
       role="img"
-      aria-label={summary[lang]}
+      aria-label={summary}
     >
       {days.map(({ key, count, level }) =>
         level === "none" ? (

@@ -8,17 +8,22 @@ import {
 } from "@/utils/database";
 import * as styles from "@/styles/home.css";
 import * as ui from "@/styles/ui.css";
-import { Stats } from "./components/Stats";
-import { StationDot, StationLink } from "./components/Station";
-import { T } from "./components/T";
+import { Stats } from "@/app/components/Stats";
+import { StationDot, StationLink } from "@/app/components/Station";
 import { clockTime, formatNumber, timeAgo } from "@/utils/format";
 import { getLastCompletedMonth, MONTH_NAMES } from "@/utils/months";
 import { compareStations, isStale, stationName } from "@/utils/stations";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 
 export default async function Home() {
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
+  const r = routes(lang);
   const chartMonth = getLastCompletedMonth();
   const [stats, recentPlays, latestPerStation, topSongs] = await Promise.all([
     getStats(),
@@ -35,21 +40,21 @@ export default async function Home() {
     <>
       <section className={styles.hero}>
         <h1 className={styles.heroTitle}>
-          <T>{(s) => s.homeTitle}</T>
+          {s.homeTitle}
         </h1>
         <Stats
           items={[
             {
-              value: <T>{(_, lang) => formatNumber(stats.artistCount, lang)}</T>,
-              label: <T>{(s) => s.artists}</T>,
+              value: formatNumber(stats.artistCount, lang),
+              label: s.artists,
             },
             {
-              value: <T>{(_, lang) => formatNumber(stats.songCount, lang)}</T>,
-              label: <T>{(s) => s.songs}</T>,
+              value: formatNumber(stats.songCount, lang),
+              label: s.songs,
             },
             {
-              value: <T>{(_, lang) => formatNumber(stats.playCount, lang)}</T>,
-              label: <T>{(s) => s.plays}</T>,
+              value: formatNumber(stats.playCount, lang),
+              label: s.plays,
             },
           ]}
         />
@@ -58,10 +63,10 @@ export default async function Home() {
       <section>
         <div className={ui.sectionHeader} style={{ paddingBottom: 24 }}>
           <h2 className={ui.sectionTitle}>
-            <T>{(s) => s.lastPlayed}</T>
+            {s.lastPlayed}
           </h2>
           <span className={ui.aside}>
-            <T>{(s) => s.lastPlayedHint}</T>
+            {s.lastPlayedHint}
           </span>
         </div>
         <div className={styles.stationCards}>
@@ -77,24 +82,24 @@ export default async function Home() {
               <div className={styles.stationCardHeader}>
                 <StationDot station={play.station} size="sm" />
                 <Link
-                  href={`/stations/${play.station}`}
+                  href={r.station(play.station)}
                   className={styles.stationCardLink}
                 >
                   {stationName(play.station)}
                 </Link>
                 <span className={styles.stationCardAgo}>
-                  <T>{(_, lang) => timeAgo(play.time_played, lang)}</T>
+                  {timeAgo(play.time_played, lang)}
                 </span>
               </div>
               <div className={styles.stationCardBody}>
                 <Link
-                  href={`/artists/${encodeURIComponent(play.artist)}/${encodeURIComponent(play.title)}`}
+                  href={r.song(play.artist, play.title)}
                   className={`${styles.stationCardSong} ${styles.stationCardInnerLink}`}
                 >
                   {play.title}
                 </Link>
                 <Link
-                  href={`/artists/${encodeURIComponent(play.artist)}`}
+                  href={r.artist(play.artist)}
                   className={`${ui.itemSub} ${styles.stationCardInnerLink}`}
                 >
                   {play.artist}
@@ -109,10 +114,10 @@ export default async function Home() {
         <div>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>
-              <T>{(s) => s.recentPlays}</T>
+              {s.recentPlays}
             </h2>
-            <Link href="/artists" className={ui.aside}>
-              <T>{(s) => s.browseAllArtists}</T>
+            <Link href={r.artists} className={ui.aside}>
+              {s.browseAllArtists}
             </Link>
           </div>
           {recentPlays.map((play) => (
@@ -122,13 +127,13 @@ export default async function Home() {
               </span>
               <div className={ui.itemText}>
                 <Link
-                  href={`/artists/${encodeURIComponent(play.artist)}/${encodeURIComponent(play.title)}`}
+                  href={r.song(play.artist, play.title)}
                   className={ui.itemTitle}
                 >
                   {play.title}
                 </Link>
                 <Link
-                  href={`/artists/${encodeURIComponent(play.artist)}`}
+                  href={r.artist(play.artist)}
                   className={ui.itemSub}
                 >
                   {play.artist}
@@ -144,19 +149,15 @@ export default async function Home() {
         <div>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>
-              <T>
-                {(s, lang) =>
-                  s.topSongsOfMonth(MONTH_NAMES[lang][chartMonth.month - 1])
-                }
-              </T>
+              {s.topSongsOfMonth(MONTH_NAMES[lang][chartMonth.month - 1])}
             </h2>
-            <Link href="/charts" className={ui.aside}>
-              <T>{(s) => s.monthlyCharts}</T>
+            <Link href={r.charts} className={ui.aside}>
+              {s.monthlyCharts}
             </Link>
           </div>
           {topSongs.length === 0 && (
             <p className={ui.emptyState}>
-              <T>{(s) => s.noDataForMonth}</T>
+              {s.noDataForMonth}
             </p>
           )}
           {topSongs.map((song, i) => (
@@ -167,20 +168,20 @@ export default async function Home() {
               <span className={styles.rowMeta}>{i + 1}</span>
               <div className={ui.itemText}>
                 <Link
-                  href={`/artists/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.title)}`}
+                  href={r.song(song.artist, song.title)}
                   className={ui.itemTitle}
                 >
                   {song.title}
                 </Link>
                 <Link
-                  href={`/artists/${encodeURIComponent(song.artist)}`}
+                  href={r.artist(song.artist)}
                   className={ui.itemSub}
                 >
                   {song.artist}
                 </Link>
               </div>
               <span className={styles.rowMeta}>
-                <T>{(_, lang) => formatNumber(song.playCount, lang)}</T>
+                {formatNumber(song.playCount, lang)}
               </span>
             </div>
           ))}

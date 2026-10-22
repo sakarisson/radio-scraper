@@ -3,7 +3,6 @@ import { connection } from "next/server";
 import { getEarliestPlayDate, getStations } from "@/utils/database";
 import * as styles from "@/styles/stations.css";
 import * as ui from "@/styles/ui.css";
-import { T } from "../components/T";
 import {
   countWord,
   formatNumber,
@@ -11,14 +10,19 @@ import {
   monthYear,
   timeAgo,
 } from "@/utils/format";
-import { StationDot } from "../components/Station";
-import { SplitBar } from "../components/StationSplit";
+import { StationDot } from "@/app/components/Station";
+import { SplitBar } from "@/app/components/StationSplit";
 import { stationName } from "@/utils/stations";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 
 export default async function StationsPage() {
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
   const [unsorted, earliest] = await Promise.all([
     getStations(),
     getEarliestPlayDate(),
@@ -30,18 +34,14 @@ export default async function StationsPage() {
   return (
     <section className={ui.intro.page}>
       <span className={ui.eyebrow}>
-        <T>{(s) => s.stationsTitle}</T>
+        {s.stationsTitle}
       </span>
       <h1 className={`${ui.display.md} ${styles.summary}`}>
-        <T>
-          {(s, lang) =>
-            s.stationsSummary(
+        {s.stationsSummary(
               formatNumber(total, lang),
               countWord(stations.length, lang),
               earliest ? monthYear(earliest, lang) : null
-            )
-          }
-        </T>
+            )}
       </h1>
 
       <div className={styles.splitWrap}>
@@ -56,7 +56,7 @@ export default async function StationsPage() {
       {stations.map((station) => (
         <Link
           key={station.slug}
-          href={`/stations/${station.slug}`}
+          href={routes(lang).station(station.slug)}
           className={`${styles.stationRow} ${ui.row}`}
         >
           <span className={styles.stationName}>
@@ -65,22 +65,16 @@ export default async function StationsPage() {
           </span>
           <span className={styles.stationPlays}>
             <span>
-              <T>{(_, lang) => formatNumber(station.playCount, lang)}</T>
+              {formatNumber(station.playCount, lang)}
             </span>
             <span className={styles.small}>
-              <T>
-                {(s) => s.playsShare(formatShare(station.playCount, total))}
-              </T>
+              {s.playsShare(formatShare(station.playCount, total))}
             </span>
           </span>
           {station.latestSong && (
             <span className={styles.stationLatest}>
               <span className={styles.small}>
-                <T>
-                  {(s, lang) =>
-                    s.lastPlayedAgo(timeAgo(station.latestSong!.time_played, lang))
-                  }
-                </T>
+                {s.lastPlayedAgo(timeAgo(station.latestSong!.time_played, lang))}
               </span>
               <span className={styles.stationLatestSong}>
                 {station.latestSong.title}

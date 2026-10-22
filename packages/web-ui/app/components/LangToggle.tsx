@@ -1,51 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
+import Link from "next/link";
+import { useSearchParams, useSelectedLayoutSegments } from "next/navigation";
 import * as styles from "@/styles/layout.css";
-import { showInLang } from "@/styles/i18n.css";
-import { LANG_CHANGE_EVENT, LANG_STORAGE_KEY, type Lang } from "@/utils/i18n";
-import { strings } from "@/utils/strings";
-import { useLang } from "./useLang";
+import type { Lang } from "@/utils/i18n";
+import { pathInLang, routes } from "@/utils/routes";
 
-export function LangToggle() {
-  const lang = useLang();
+const OTHER: Record<Lang, Lang> = { fo: "en", en: "fo" };
 
-  // The tab title comes from the page metadata, which is in the default
-  // language and can be written after hydration, so keep correcting it.
-  useEffect(() => {
-    const title = strings[lang].siteName;
-    const apply = () => {
-      if (document.title !== title) document.title = title;
-    };
-    apply();
-    const observer = new MutationObserver(apply);
-    observer.observe(document.head, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-    return () => observer.disconnect();
-  }, [lang]);
+const LABEL: Record<Lang, string> = { en: "English", fo: "Føroyskt" };
 
-  function toggle() {
-    const next: Lang = lang === "en" ? "fo" : "en";
-    document.documentElement.dataset.lang = next;
-    document.documentElement.lang = next;
-    try {
-      localStorage.setItem(LANG_STORAGE_KEY, next);
-    } catch {}
-    window.dispatchEvent(new Event(LANG_CHANGE_EVENT));
-  }
-
-  // The label names the language you'd switch *to*, in that language.
+export function LangLink({ lang, href }: { lang: Lang; href?: string }) {
+  const other = OTHER[lang];
   return (
-    <button type="button" onClick={toggle} className={styles.themeToggle}>
-      <span className={showInLang.fo} lang="en">
-        English
-      </span>
-      <span className={showInLang.en} lang="fo">
-        Føroyskt
-      </span>
-    </button>
+    <Link
+      href={href ?? routes(other).home}
+      hrefLang={other}
+      lang={other}
+      className={styles.themeToggle}
+    >
+      {LABEL[other]}
+    </Link>
   );
+}
+
+export function LangToggle({ lang }: { lang: Lang }) {
+  const other = OTHER[lang];
+  const path = pathInLang(useSelectedLayoutSegments(), other);
+  const query = useSearchParams().toString();
+  return <LangLink lang={lang} href={query ? `${path}?${query}` : path} />;
 }
