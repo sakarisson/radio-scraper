@@ -7,15 +7,22 @@ primary_region = "ams"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
+  # Node would otherwise allow itself a ~260 MB heap on a 512 MB machine. With
+  # Next's in-memory caches (up to ~100 MB) on top, that's more than the machine
+  # has, and it stalls collecting garbage instead of crashing. A smaller heap
+  # makes Node collect garbage before the machine runs out.
+  NODE_OPTIONS = "--max-old-space-size=192"
 
 [http_service]
   internal_port = 8080
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
-  # Keep one machine warm so visitors never wait for a cold start, and so the
-  # in-memory data cache survives quiet periods
-  min_machines_running = 1
+  # Keep both machines running. A shared-cpu-1x machine only gets a small slice
+  # of a CPU, and one machine alone gets throttled under normal traffic. Fly
+  # also doesn't check health when it picks which machine to stop, so with one
+  # it could stop the healthy machine and leave a struggling one running.
+  min_machines_running = 2
 
   [[http_service.checks]]
     path = "/healthz"
