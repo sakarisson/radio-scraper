@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { internalPath } from "@/utils/routes";
 
-// Turns away crawlers and scraping tools by user agent. robots.txt already asks
-// every bot to stay out; this catches the ones that ignore it. A scraper that
-// pretends to be a browser still gets through.
+// Crawlers and scraping tools are turned away by user agent. robots.txt
+// already asks every bot to stay out; this catches the ones that ignore it. A
+// scraper that pretends to be a browser still gets through.
 
 // Link previews fetch a single page when someone shares a link, so they're
 // allowed. iMessage previews identify as facebookexternalhit and Twitterbot.
@@ -19,7 +20,9 @@ export function proxy(request: NextRequest) {
   if (userAgent === "" || (BOT.test(userAgent) && !LINK_PREVIEW.test(userAgent))) {
     return new NextResponse("Forbidden", { status: 403 });
   }
-  return NextResponse.next();
+  const url = request.nextUrl.clone();
+  url.pathname = internalPath(url.pathname);
+  return NextResponse.rewrite(url);
 }
 
 export const config = {

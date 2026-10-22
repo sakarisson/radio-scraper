@@ -1,26 +1,31 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import * as styles from "@/styles/layout.css";
-import { T } from "./T";
-import { LangToggle } from "./LangToggle";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
+import { LangLink, LangToggle } from "./LangToggle";
 import { Nav, NavLinks } from "./Nav";
 import { ThemeToggle } from "./ThemeToggle";
 
-export function Header() {
+export async function Header() {
+  const lang = await getLang();
   return (
     <header className={styles.header}>
-      <Link href="/" className={styles.logo}>
+      <Link href={routes(lang).home} className={styles.logo}>
         <span className={styles.logoDot} />
-        <T>{(s) => s.siteName}</T>
+        {strings[lang].siteName}
       </Link>
       <nav className={styles.nav}>
-        {/* The current path isn't known when the page shell is prerendered,
+        {/* The current page isn't known when the page shell is prerendered,
             so the shell shows the links without a highlight */}
-        <Suspense fallback={<NavLinks pathname={null} />}>
-          <Nav />
+        <Suspense fallback={<NavLinks lang={lang} section={null} />}>
+          <Nav lang={lang} />
         </Suspense>
-        <LangToggle />
-        <ThemeToggle />
+        <Suspense fallback={<LangLink lang={lang} />}>
+          <LangToggle lang={lang} />
+        </Suspense>
+        <ThemeToggle lang={lang} />
       </nav>
     </header>
   );

@@ -9,11 +9,11 @@ import {
 import * as styles from "@/styles/artists.css";
 import * as ui from "@/styles/ui.css";
 import { strings } from "@/utils/strings";
-import { T } from "../components/T";
-import { Localized } from "../components/Localized";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
 import { formatNumber } from "@/utils/format";
 import { getCurrentMonth } from "@/utils/months";
-import { Pagination } from "../components/Pagination";
+import { Pagination } from "@/app/components/Pagination";
 
 const PAGE_SIZE = 30;
 
@@ -32,6 +32,9 @@ export default async function ArtistsPage(props: Props) {
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
+  const r = routes(lang);
   const parsed = paramsSchema.safeParse(await props.searchParams);
   const page = parsed.success ? parsed.data?.page ?? 0 : 0;
   const query = parsed.success ? parsed.data?.q?.trim() || undefined : undefined;
@@ -55,14 +58,10 @@ export default async function ArtistsPage(props: Props) {
     <>
       <section className={ui.intro.page}>
         <span className={ui.eyebrow}>
-          <T>{(s) => s.artists}</T>
+          {s.artists}
         </span>
         <h1 className={ui.display.md}>
-          <T>
-            {(s, lang) =>
-              s.artistCount(formatNumber(totalCount ?? matchingCount, lang))
-            }
-          </T>
+          {s.artistCount(formatNumber(totalCount ?? matchingCount, lang))}
         </h1>
       </section>
 
@@ -70,25 +69,21 @@ export default async function ArtistsPage(props: Props) {
         <section className={ui.section.md}>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>
-              <T>{(s) => s.trending}</T>
+              {s.trending}
             </h2>
           </div>
           <div className={styles.trendingGrid}>
             {trending.map((artist, i) => (
               <Link
                 key={artist.name}
-                href={`/artists/${encodeURIComponent(artist.name)}`}
+                href={r.artist(artist.name)}
                 className={`${styles.trendingCard} ${ui.softCard} ${ui.blockLink}`}
               >
                 <span className={styles.small}>{i + 1}</span>
                 <span>
                   <span className={styles.trendingName}>{artist.name}</span>
                   <span className={styles.small}>
-                    <T>
-                      {(s, lang) =>
-                        `${formatNumber(artist.playCount, lang)} ${s.playsLabel}`
-                      }
-                    </T>
+                    {`${formatNumber(artist.playCount, lang)} ${s.playsLabel}`}
                   </span>
                 </span>
               </Link>
@@ -100,29 +95,16 @@ export default async function ArtistsPage(props: Props) {
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader} style={{ alignItems: "center" }}>
           <h2 className={ui.sectionTitle}>
-            <T>
-              {(s) => (query ? s.resultsFor(query) : s.allArtistsByPlays)}
-            </T>
+            {(query ? s.resultsFor(query) : s.allArtistsByPlays)}
           </h2>
-          <form action="/artists" method="GET" role="search">
-            <Localized
-              as="input"
-              props={{
-                type: "search",
-                name: "q",
-                defaultValue: query ?? "",
-                className: ui.searchInput,
-              }}
-              byLang={{
-                fo: {
-                  "aria-label": strings.fo.searchArtistsPlaceholder,
-                  placeholder: strings.fo.searchArtistsPlaceholder,
-                },
-                en: {
-                  "aria-label": strings.en.searchArtistsPlaceholder,
-                  placeholder: strings.en.searchArtistsPlaceholder,
-                },
-              }}
+          <form action={r.artists} method="GET" role="search">
+            <input
+              type="search"
+              name="q"
+              defaultValue={query ?? ""}
+              className={ui.searchInput}
+              aria-label={s.searchArtistsPlaceholder}
+              placeholder={s.searchArtistsPlaceholder}
             />
           </form>
         </div>
@@ -131,34 +113,30 @@ export default async function ArtistsPage(props: Props) {
           <div className={styles.leaderboard}>
             {leaderboard.map((artist, i) => (
               <Link
-                href={`/artists/${encodeURIComponent(artist.name)}`}
+                href={r.artist(artist.name)}
                 key={artist.id}
                 className={`${styles.leaderboardRow} ${ui.row} ${ui.blockLink}`}
               >
                 <span className={styles.small}>
-                  <T>{(_, lang) => formatNumber(offset + i + 1, lang)}</T>
+                  {formatNumber(offset + i + 1, lang)}
                 </span>
                 <span className={styles.leaderboardName}>{artist.name}</span>
                 <span className={styles.small}>
-                  <T>{(_, lang) => formatNumber(artist.playCount, lang)}</T>
+                  {formatNumber(artist.playCount, lang)}
                 </span>
               </Link>
             ))}
           </div>
         ) : (
           <p className={ui.emptyState}>
-            <T>
-              {(s) =>
-                query ? s.noArtistsFoundMatching(query) : s.noArtistsFound
-              }
-            </T>
+            {query ? s.noArtistsFoundMatching(query) : s.noArtistsFound}
           </p>
         )}
 
         <Pagination
           currentPage={page}
           totalPages={totalPages}
-          basePath="/artists"
+          basePath={r.artists}
           extraParams={{ q: query }}
         />
       </section>

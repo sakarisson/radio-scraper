@@ -1,27 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import * as styles from "@/styles/layout.css";
-import { T } from "./T";
+import type { Lang } from "@/utils/i18n";
+import { routes } from "@/utils/routes";
+import { strings } from "@/utils/strings";
 
-const items = [
-  { href: "/artists", label: <T>{(s) => s.navArtists}</T> },
-  { href: "/charts", label: <T>{(s) => s.navCharts}</T> },
-  { href: "/stations", label: <T>{(s) => s.navStations}</T> },
-];
+export function NavLinks({
+  lang,
+  section,
+}: {
+  lang: Lang;
+  section: string | null;
+}) {
+  const s = strings[lang];
+  const r = routes(lang);
+  const items = [
+    { key: "artists", href: r.artists, label: s.navArtists },
+    { key: "charts", href: r.charts, label: s.navCharts },
+    { key: "stations", href: r.stations, label: s.navStations },
+  ];
 
-/** The nav links, with the one for the current section highlighted. */
-export function NavLinks({ pathname }: { pathname: string | null }) {
   return (
     <>
-      {items.map(({ href, label }) => {
-        const active =
-          pathname !== null &&
-          (pathname === href || pathname.startsWith(`${href}/`));
+      {items.map(({ key, href, label }) => {
+        const active = section === key;
         return (
           <Link
-            key={href}
+            key={key}
             href={href}
             className={styles.navLink[active ? "active" : "idle"]}
             aria-current={active ? "page" : undefined}
@@ -34,6 +41,6 @@ export function NavLinks({ pathname }: { pathname: string | null }) {
   );
 }
 
-export function Nav() {
-  return <NavLinks pathname={usePathname()} />;
+export function Nav({ lang }: { lang: Lang }) {
+  return <NavLinks lang={lang} section={useSelectedLayoutSegment()} />;
 }

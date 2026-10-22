@@ -1,5 +1,7 @@
 import Link from "next/link";
 import * as ui from "@/styles/ui.css";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
 import { stationColor, stationName } from "@/utils/stations";
 
 export function StationDot({
@@ -19,9 +21,10 @@ export function StationDot({
 }
 
 /** Small muted "● KVF" label linking to the station. */
-export function StationLink({ station }: { station: string }) {
+export async function StationLink({ station }: { station: string }) {
+  const lang = await getLang();
   return (
-    <Link href={`/stations/${station}`} className={ui.stationLabel}>
+    <Link href={routes(lang).station(station)} className={ui.stationLabel}>
       <StationDot station={station} />
       {stationName(station)}
     </Link>

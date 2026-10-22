@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 import { getArtistPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
-import type { Strings } from "@/utils/strings";
-import { T } from "@/app/components/T";
-import { Localized } from "@/app/components/Localized";
+import { strings } from "@/utils/strings";
+import type { Lang } from "@/utils/i18n";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
 import {
   formatNumber,
   fullDateTime,
@@ -27,31 +28,26 @@ const paramsSchema = z
   .optional();
 
 const sortOptions = [
-  { key: "recent", label: (s: Strings) => s.sortLastPlayed },
-  { key: "plays", label: (s: Strings) => s.sortMostPlayed },
+  { key: "recent", label: "sortLastPlayed" },
+  { key: "plays", label: "sortMostPlayed" },
 ] as const;
 
 /** A muted span with the full date and time as a tooltip. */
 function DateWithTooltip({
   date,
+  lang,
   className,
   children,
 }: {
   date: string;
+  lang: Lang;
   className: string;
   children: React.ReactNode;
 }) {
   return (
-    <Localized
-      as="span"
-      props={{ className }}
-      byLang={{
-        fo: { title: fullDateTime(date, "fo") },
-        en: { title: fullDateTime(date, "en") },
-      }}
-    >
+    <span className={className} title={fullDateTime(date, lang)}>
       {children}
-    </Localized>
+    </span>
   );
 }
 
@@ -65,6 +61,9 @@ export default async function ArtistPage({
   // Render per request: the page shows times relative to now. The data
   // itself is cached.
   await connection();
+  const lang = await getLang();
+  const s = strings[lang];
+  const r = routes(lang);
   const { slug } = await params;
   const artistName = decodeURIComponent(slug);
   const parsed = paramsSchema.safeParse(await searchParams);
@@ -82,20 +81,15 @@ export default async function ArtistPage({
       : new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime()
   );
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
-  const artistHref = `/artists/${slug}`;
+  const artistHref = r.artist(artistName);
 
   function sortHref(key: (typeof sortOptions)[number]["key"]) {
-    const qs = new URLSearchParams();
-    if (key !== "recent") qs.set("sort", key);
-    const s = qs.toString();
-    return s ? `${artistHref}?${s}` : artistHref;
+    return key === "recent" ? artistHref : `${artistHref}?sort=${key}`;
   }
 
   return (
     <>
-      <Breadcrumbs
-        items={[{ href: "/artists", label: <T>{(s) => s.artists}</T> }]}
-      />
+      <Breadcrumbs items={[{ href: r.artists, label: s.artists }]} />
 
       <section className={ui.intro.detail}>
         <h1 className={ui.display.lg}>{artistName}</h1>
@@ -103,12 +97,12 @@ export default async function ArtistPage({
           <Stats
             items={[
               {
-                value: <T>{(_, lang) => formatNumber(totalCount, lang)}</T>,
-                label: <T>{(s) => s.plays}</T>,
+                value: formatNumber(totalCount, lang),
+                label: s.plays,
               },
               {
-                value: <T>{(_, lang) => formatNumber(songs.length, lang)}</T>,
-                label: <T>{(s) => s.songs}</T>,
+                value: formatNumber(songs.length, lang),
+                label: s.songs,
               },
             ]}
           />
@@ -116,25 +110,21 @@ export default async function ArtistPage({
         {firstPlay && (
           <p className={styles.firstPlay}>
             <span className={ui.muted}>
-              <T>{(s) => s.firstPlay}</T>
+              {s.firstPlay}
             </span>
             <Link
-              href={`${artistHref}/${encodeURIComponent(firstPlay.title)}`}
+              href={r.song(artistName, firstPlay.title)}
               className={styles.firstPlaySong}
             >
               {firstPlay.title}
             </Link>
             <StationLink station={firstPlay.station} />
-            <Localized
-              as="span"
-              props={{ className: ui.muted }}
-              byLang={{
-                fo: { title: relativeTime(firstPlay.time_played, "fo") },
-                en: { title: relativeTime(firstPlay.time_played, "en") },
-              }}
+            <span
+              className={ui.muted}
+              title={relativeTime(firstPlay.time_played, lang)}
             >
-              <T>{(_, lang) => fullDateTime(firstPlay.time_played, lang)}</T>
-            </Localized>
+              {fullDateTime(firstPlay.time_played, lang)}
+            </span>
           </p>
         )}
       </section>
@@ -147,7 +137,7 @@ export default async function ArtistPage({
         <section className={ui.section.sm}>
           <div className={ui.sectionHeader}>
             <h2 className={ui.sectionTitle}>
-              <T>{(s) => s.playsByStation}</T>
+              {s.playsByStation}
             </h2>
           </div>
           <StationSplit breakdown={stationBreakdown} />
@@ -158,7 +148,7 @@ export default async function ArtistPage({
         <section className={ui.section.lg}>
           <div className={ui.sectionHeader} style={{ alignItems: "center" }}>
             <h2 className={ui.sectionTitle}>
-              <T>{(s) => s.songs}</T>
+              {s.songs}
             </h2>
             <div className={ui.segmented}>
               {sortOptions.map(({ key, label }) => (
@@ -169,36 +159,36 @@ export default async function ArtistPage({
                   className={ui.segment[sort === key ? "active" : "idle"]}
                   aria-current={sort === key ? "true" : undefined}
                 >
-                  <T>{label}</T>
+                  {s[label]}
                 </Link>
               ))}
             </div>
           </div>
           <div className={`${styles.songHeader} ${ui.row}`}>
             <span>
-              <T>{(s) => s.title}</T>
+              {s.title}
             </span>
             <span>
-              <T>{(s) => s.plays}</T>
+              {s.plays}
             </span>
             <span className={styles.hideMedium}>
-              <T>{(s) => s.firstPlayed}</T>
+              {s.firstPlayed}
             </span>
             <span className={styles.hideNarrow}>
-              <T>{(s) => s.lastPlayed}</T>
+              {s.lastPlayed}
             </span>
           </div>
           {songs.map(({ songId, title, playCount, firstPlayed, lastPlayed }) => (
             <div key={songId} className={`${styles.songRow} ${ui.row}`}>
               <Link
-                href={`${artistHref}/${encodeURIComponent(title)}`}
+                href={r.song(artistName, title)}
                 className={styles.songTitle}
               >
                 {title}
               </Link>
               <div className={styles.playsCell}>
                 <span className={styles.playsNumber}>
-                  <T>{(_, lang) => formatNumber(playCount, lang)}</T>
+                  {formatNumber(playCount, lang)}
                 </span>
                 <div className={`${ui.thinTrack} ${styles.playsTrack}`}>
                   <div
@@ -209,15 +199,17 @@ export default async function ArtistPage({
               </div>
               <DateWithTooltip
                 date={firstPlayed}
+                lang={lang}
                 className={`${ui.muted} ${styles.hideMedium}`}
               >
-                <T>{(_, lang) => relativeTime(firstPlayed, lang)}</T>
+                {relativeTime(firstPlayed, lang)}
               </DateWithTooltip>
               <DateWithTooltip
                 date={lastPlayed}
+                lang={lang}
                 className={`${ui.muted} ${styles.hideNarrow}`}
               >
-                <T>{(_, lang) => relativeTime(lastPlayed, lang)}</T>
+                {relativeTime(lastPlayed, lang)}
               </DateWithTooltip>
             </div>
           ))}
@@ -227,20 +219,20 @@ export default async function ArtistPage({
       <section className={ui.section.lg}>
         <div className={ui.sectionHeader}>
           <h2 className={ui.sectionTitle}>
-            <T>{(s) => s.recentPlays}</T>
+            {s.recentPlays}
           </h2>
         </div>
         {plays.map(({ title, time_played, station, id }) => (
           <div key={id} className={`${styles.playRow} ${ui.row}`}>
             <Link
-              href={`${artistHref}/${encodeURIComponent(title)}`}
+              href={r.song(artistName, title)}
               className={styles.songTitle}
             >
               {title}
             </Link>
             <StationLink station={station} />
             <span className={styles.playWhen}>
-              <T>{(_, lang) => playTime(time_played, lang)}</T>
+              {playTime(time_played, lang)}
             </span>
           </div>
         ))}

@@ -2,8 +2,9 @@ import Link from "next/link";
 import * as ui from "@/styles/ui.css";
 import { stationColor, stationName } from "@/utils/stations";
 import { formatNumber, formatShare } from "@/utils/format";
+import { getLang } from "@/utils/lang";
+import { routes } from "@/utils/routes";
 import { StationDot } from "./Station";
-import { T } from "./T";
 
 export function SplitBar({
   items,
@@ -24,11 +25,12 @@ export function SplitBar({
 }
 
 /** Proportional bar plus a legend, e.g. for an artist's plays per station. */
-export function StationSplit({
+export async function StationSplit({
   breakdown,
 }: {
   breakdown: { station: string; playCount: number }[];
 }) {
+  const lang = await getLang();
   const items = [...breakdown].sort((a, b) => b.playCount - a.playCount);
   const total = items.reduce((sum, s) => sum + s.playCount, 0);
 
@@ -39,13 +41,13 @@ export function StationSplit({
         {items.map(({ station, playCount }) => (
           <Link
             key={station}
-            href={`/stations/${station}`}
+            href={routes(lang).station(station)}
             className={ui.splitLegendItem}
           >
             <StationDot station={station} size="sm" />
             <span className={ui.strong}>{stationName(station)}</span>
             <span className={ui.muted}>
-              <T>{(_, lang) => formatNumber(playCount, lang)}</T> &middot;{" "}
+              {formatNumber(playCount, lang)} &middot;{" "}
               {formatShare(playCount, total)}
             </span>
           </Link>
