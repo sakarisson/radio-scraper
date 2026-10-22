@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
+import { notFound } from "next/navigation";
 import { z } from "zod";
-import { getAllStationSlugs } from "@/utils/database";
+import { getAllStationSlugs, getEarliestPlayDate } from "@/utils/database";
+import { faroeParts } from "@/utils/time";
 import * as styles from "@/styles/charts.css";
 import * as ui from "@/styles/ui.css";
 import { visuallyHidden } from "@/styles/i18n.css";
@@ -35,6 +37,11 @@ function parseMonth(param: string | undefined) {
 
 function formatMonthParam(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+/** Months counted from year 0, so two months compare with < and >. */
+function monthIndex(year: number, month: number) {
+  return year * 12 + (month - 1);
 }
 
 function getPrevMonth(year: number, month: number) {
@@ -73,17 +80,37 @@ export default async function ChartsPage({
   const stationsParam = parsed.success ? parsed.data?.stations : undefined;
   const { year, month } = parseMonth(monthParam);
 
-  const allSlugs = await getAllStationSlugs();
+  const [allSlugs, earliestPlay] = await Promise.all([
+    getAllStationSlugs(),
+    getEarliestPlayDate(),
+  ]);
   const selectedSlugs = stationsParam
     ? stationsParam.split(",").filter((s) => allSlugs.includes(s))
     : undefined;
 
+  // Only months with data have charts. Without this limit the month links
+  // let crawlers page back through empty months forever.
+  const lastCompleted = getLastCompletedMonth();
+  const firstMonth = earliestPlay ? faroeParts(earliestPlay) : lastCompleted;
+  const current = monthIndex(year, month);
+  if (
+    monthParam &&
+    (month < 1 ||
+      month > 12 ||
+      current < monthIndex(firstMonth.year, firstMonth.month) ||
+      current > monthIndex(lastCompleted.year, lastCompleted.month))
+  ) {
+    notFound();
+  }
+
   const prev = getPrevMonth(year, month);
   const next = getNextMonth(year, month);
-  const lastCompleted = getLastCompletedMonth();
+  const isBeforeFirstPrev =
+    monthIndex(prev.year, prev.month) <
+    monthIndex(firstMonth.year, firstMonth.month);
   const isFutureNext =
-    next.year > lastCompleted.year ||
-    (next.year === lastCompleted.year && next.month > lastCompleted.month);
+    monthIndex(next.year, next.month) >
+    monthIndex(lastCompleted.year, lastCompleted.month);
 
   const currentStationsParam = selectedSlugs?.length
     ? selectedSlugs.join(",")
@@ -99,15 +126,25 @@ export default async function ChartsPage({
             <T>{(s) => s.charts}</T>
           </span>
           <div className={styles.monthPicker}>
-            <Link
-              href={buildChartsHref(prev.year, prev.month, currentStationsParam)}
-              className={styles.monthNav.enabled}
-            >
-              <span aria-hidden>&#8249;</span>
-              <span className={visuallyHidden}>
-                <T>{(s) => s.previousMonth}</T>
+            {isBeforeFirstPrev ? (
+              <span className={styles.monthNav.disabled} aria-hidden>
+                &#8249;
               </span>
-            </Link>
+            ) : (
+              <Link
+                href={buildChartsHref(
+                  prev.year,
+                  prev.month,
+                  currentStationsParam
+                )}
+                className={styles.monthNav.enabled}
+              >
+                <span aria-hidden>&#8249;</span>
+                <span className={visuallyHidden}>
+                  <T>{(s) => s.previousMonth}</T>
+                </span>
+              </Link>
+            )}
             <h1 className={ui.display.md}>
               <T>
                 {(_, lang) =>
@@ -167,6 +204,9 @@ export default async function ChartsPage({
                 href={buildChartsHref(year, month, nextSlugs)}
                 className={styles.filter[isActive ? "active" : "idle"]}
                 scroll={false}
+                // Every combination and order of stations is a separate URL,
+                // so crawlers shouldn't follow these
+                rel="nofollow"
               >
                 <StationDot station={slug} size="sm" />
                 {stationName(slug)}
