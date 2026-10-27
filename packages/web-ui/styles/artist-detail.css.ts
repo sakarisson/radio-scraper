@@ -117,6 +117,12 @@ export const playsTrack = style({
   "@media": { [narrow]: { display: "none" } },
 });
 
+export const moreSongs = style({
+  padding: "14px 0",
+  fontSize: "15px",
+  fontWeight: 500,
+});
+
 /* Recent plays */
 
 export const playRow = style({
