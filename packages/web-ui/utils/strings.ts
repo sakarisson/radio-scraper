@@ -66,7 +66,13 @@ const en = {
   recentPlaysOn: (station: string) => `Recent plays on ${station}`,
   footerText: (since: string | null) =>
     `Tracking Faroese radio since ${since ?? "the beginning"}`,
-  collaborations: "Collaborations",
+  artist: "Artist",
+  // Combined credits the artist is part of, like "Eivør og Pætur"
+  creditedTogether: "Credited together",
+  // Songs by another artist where this artist is the guest
+  guestOn: "Guest on",
+  showAllSongs: (count: string) => `Show all ${count} songs →`,
+  showFewerSongs: "Show fewer songs",
   collaborationsHint: "Not included in the totals above",
   // Before a list of guests, as in "BYRTA featuring Sakaris"
   featuring: "featuring",
@@ -146,7 +152,11 @@ const fo: Strings = {
     since
       ? `Vit hava fylgt við føroyskum útvarpi síðan ${since}`
       : "Vit fylgja við føroyskum útvarpi",
-  collaborations: "Samstarv",
+  artist: "Tónleikari",
+  creditedTogether: "Saman við øðrum",
+  guestOn: "Gestur á",
+  showAllSongs: (count: string) => `Vís øll ${count} løgini →`,
+  showFewerSongs: "Vís færri løg",
   collaborationsHint: "Ikki íroknað í tølunum omanfyri",
   featuring: "saman við",
   alsoSpelled: "Eisini stavað",

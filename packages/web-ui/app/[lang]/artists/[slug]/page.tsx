@@ -29,6 +29,7 @@ import {
 const paramsSchema = z
   .object({
     sort: z.enum(["recent", "plays"]).optional(),
+    songs: z.enum(["all"]).optional(),
   })
   .optional();
 
@@ -36,6 +37,9 @@ const sortOptions = [
   { key: "recent", label: "sortLastPlayed" },
   { key: "plays", label: "sortMostPlayed" },
 ] as const;
+
+/** Songs shown before "Show all", so the sections below stay reachable */
+const SONGS_SHOWN = 15;
 
 /** A muted span with the full date and time as a tooltip. */
 function DateWithTooltip({
@@ -56,6 +60,67 @@ function DateWithTooltip({
   );
 }
 
+/** A row of the songs table: a name, then plays, first and last played. */
+function PlaysRow({
+  name,
+  playCount,
+  maxPlays,
+  firstPlayed,
+  lastPlayed,
+  lang,
+}: {
+  name: React.ReactNode;
+  playCount: number;
+  maxPlays: number;
+  firstPlayed: string;
+  lastPlayed: string;
+  lang: Lang;
+}) {
+  return (
+    <div className={`${styles.songRow} ${ui.row}`}>
+      {name}
+      <div className={styles.playsCell}>
+        <span className={styles.playsNumber}>
+          {formatNumber(playCount, lang)}
+        </span>
+        <div className={`${ui.thinTrack} ${styles.playsTrack}`}>
+          <div
+            className={ui.thinFill}
+            style={{ width: `${(playCount / maxPlays) * 100}%` }}
+          />
+        </div>
+      </div>
+      <DateWithTooltip
+        date={firstPlayed}
+        lang={lang}
+        className={`${ui.muted} ${styles.hideMedium}`}
+      >
+        {relativeTime(firstPlayed, lang)}
+      </DateWithTooltip>
+      <DateWithTooltip
+        date={lastPlayed}
+        lang={lang}
+        className={`${ui.muted} ${styles.hideNarrow}`}
+      >
+        {relativeTime(lastPlayed, lang)}
+      </DateWithTooltip>
+    </div>
+  );
+}
+
+/** The column labels above a songs table */
+function PlaysHeader({ first, lang }: { first: string; lang: Lang }) {
+  const s = strings[lang];
+  return (
+    <div className={`${styles.songHeader} ${ui.row}`}>
+      <span>{first}</span>
+      <span>{s.plays}</span>
+      <span className={styles.hideMedium}>{s.firstPlayed}</span>
+      <span className={styles.hideNarrow}>{s.lastPlayed}</span>
+    </div>
+  );
+}
+
 export default async function ArtistPage({
   params,
   searchParams,
@@ -73,6 +138,7 @@ export default async function ArtistPage({
   const artistName = decodeURIComponent(slug);
   const parsed = paramsSchema.safeParse(await searchParams);
   const sort = parsed.success ? parsed.data?.sort ?? "recent" : "recent";
+  const showAllSongs = parsed.success && parsed.data?.songs === "all";
 
   const artist = await getArtistPage(artistName);
   if (artist === null) {
@@ -98,13 +164,26 @@ export default async function ArtistPage({
       ? b.playCount - a.playCount
       : new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime()
   );
+  const shownSongs = showAllSongs ? songs : songs.slice(0, SONGS_SHOWN);
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
-  const maxCollabPlays = Math.max(1, ...collaborations.map((c) => c.playCount));
+  // Combined credits ("Eivør og Pætur") and songs where they're a guest
+  // ("Træ (saman við Eivør)") are different things, so they're listed apart
+  const credits = collaborations.filter((c) => c.songTitle === null);
+  const guestSongs = collaborations.filter(
+    (c): c is typeof c & { songTitle: string } => c.songTitle !== null
+  );
+  const maxCreditPlays = Math.max(1, ...credits.map((c) => c.playCount));
+  const maxGuestPlays = Math.max(1, ...guestSongs.map((c) => c.playCount));
   const credit = creditSegments(artistName, members);
   const artistHref = r.artist(artistName);
 
-  function sortHref(key: (typeof sortOptions)[number]["key"]) {
-    return key === "recent" ? artistHref : `${artistHref}?sort=${key}`;
+  function pageHref(next: { sort?: typeof sort; all?: boolean }) {
+    const query = new URLSearchParams();
+    const nextSort = next.sort ?? sort;
+    if (nextSort !== "recent") query.set("sort", nextSort);
+    if (next.all ?? showAllSongs) query.set("songs", "all");
+    const qs = query.toString();
+    return qs ? `${artistHref}?${qs}` : artistHref;
   }
 
   return (
@@ -187,7 +266,7 @@ export default async function ArtistPage({
               {sortOptions.map(({ key, label }) => (
                 <Link
                   key={key}
-                  href={sortHref(key)}
+                  href={pageHref({ sort: key })}
                   scroll={false}
                   className={ui.segment[sort === key ? "active" : "idle"]}
                   aria-current={sort === key ? "true" : undefined}
@@ -197,81 +276,76 @@ export default async function ArtistPage({
               ))}
             </div>
           </div>
-          <div className={`${styles.songHeader} ${ui.row}`}>
-            <span>
-              {s.title}
-            </span>
-            <span>
-              {s.plays}
-            </span>
-            <span className={styles.hideMedium}>
-              {s.firstPlayed}
-            </span>
-            <span className={styles.hideNarrow}>
-              {s.lastPlayed}
-            </span>
-          </div>
-          {songs.map(({ songId, title, playCount, firstPlayed, lastPlayed }) => (
-            <div key={songId} className={`${styles.songRow} ${ui.row}`}>
-              <Link
-                href={r.song(artistName, title)}
-                className={styles.songTitle}
-              >
-                {title}
+          <PlaysHeader first={s.title} lang={lang} />
+          {shownSongs.map(
+            ({ songId, title, playCount, firstPlayed, lastPlayed }) => (
+              <PlaysRow
+                key={songId}
+                name={
+                  <Link
+                    href={r.song(artistName, title)}
+                    className={styles.songTitle}
+                  >
+                    {title}
+                  </Link>
+                }
+                playCount={playCount}
+                maxPlays={maxSongPlays}
+                firstPlayed={firstPlayed}
+                lastPlayed={lastPlayed}
+                lang={lang}
+              />
+            )
+          )}
+          {songs.length > SONGS_SHOWN && (
+            <div className={`${styles.moreSongs} ${ui.row}`}>
+              <Link href={pageHref({ all: !showAllSongs })} scroll={false}>
+                {showAllSongs
+                  ? s.showFewerSongs
+                  : s.showAllSongs(formatNumber(songs.length, lang))}
               </Link>
-              <div className={styles.playsCell}>
-                <span className={styles.playsNumber}>
-                  {formatNumber(playCount, lang)}
-                </span>
-                <div className={`${ui.thinTrack} ${styles.playsTrack}`}>
-                  <div
-                    className={ui.thinFill}
-                    style={{ width: `${(playCount / maxSongPlays) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <DateWithTooltip
-                date={firstPlayed}
-                lang={lang}
-                className={`${ui.muted} ${styles.hideMedium}`}
-              >
-                {relativeTime(firstPlayed, lang)}
-              </DateWithTooltip>
-              <DateWithTooltip
-                date={lastPlayed}
-                lang={lang}
-                className={`${ui.muted} ${styles.hideNarrow}`}
-              >
-                {relativeTime(lastPlayed, lang)}
-              </DateWithTooltip>
             </div>
+          )}
+        </section>
+      )}
+
+      {credits.length > 0 && (
+        <section className={ui.section.lg}>
+          <div className={ui.sectionHeader}>
+            <h2 className={ui.sectionTitle}>{s.creditedTogether}</h2>
+            <span className={ui.muted}>{s.collaborationsHint}</span>
+          </div>
+          <PlaysHeader first={s.artist} lang={lang} />
+          {credits.map(({ creditName, playCount, firstPlayed, lastPlayed }) => (
+            <PlaysRow
+              key={creditName}
+              name={
+                <Link href={r.artist(creditName)} className={styles.songTitle}>
+                  {creditName}
+                </Link>
+              }
+              playCount={playCount}
+              maxPlays={maxCreditPlays}
+              firstPlayed={firstPlayed}
+              lastPlayed={lastPlayed}
+              lang={lang}
+            />
           ))}
         </section>
       )}
 
-      {collaborations.length > 0 && (
+      {guestSongs.length > 0 && (
         <section className={ui.section.lg}>
           <div className={ui.sectionHeader}>
-            <h2 className={ui.sectionTitle}>{s.collaborations}</h2>
+            <h2 className={ui.sectionTitle}>{s.guestOn}</h2>
             <span className={ui.muted}>{s.collaborationsHint}</span>
           </div>
-          <div className={`${styles.songHeader} ${ui.row}`}>
-            <span />
-            <span>{s.plays}</span>
-            <span className={styles.hideMedium}>{s.firstPlayed}</span>
-            <span className={styles.hideNarrow}>{s.lastPlayed}</span>
-          </div>
-          {collaborations.map(
+          <PlaysHeader first={s.title} lang={lang} />
+          {guestSongs.map(
             ({ creditName, songTitle, playCount, firstPlayed, lastPlayed }) => (
-              <div
-                key={`${creditName}/${songTitle ?? ""}`}
-                className={`${styles.songRow} ${ui.row}`}
-              >
-                {songTitle === null ? (
-                  <Link href={r.artist(creditName)} className={styles.songTitle}>
-                    {creditName}
-                  </Link>
-                ) : (
+              <PlaysRow
+                key={`${creditName}/${songTitle}`}
+                name={
                   <span className={ui.itemText}>
                     <Link
                       href={r.song(creditName, songTitle)}
@@ -283,33 +357,13 @@ export default async function ArtistPage({
                       {creditName}
                     </Link>
                   </span>
-                )}
-                <div className={styles.playsCell}>
-                  <span className={styles.playsNumber}>
-                    {formatNumber(playCount, lang)}
-                  </span>
-                  <div className={`${ui.thinTrack} ${styles.playsTrack}`}>
-                    <div
-                      className={ui.thinFill}
-                      style={{ width: `${(playCount / maxCollabPlays) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                <DateWithTooltip
-                  date={firstPlayed}
-                  lang={lang}
-                  className={`${ui.muted} ${styles.hideMedium}`}
-                >
-                  {relativeTime(firstPlayed, lang)}
-                </DateWithTooltip>
-                <DateWithTooltip
-                  date={lastPlayed}
-                  lang={lang}
-                  className={`${ui.muted} ${styles.hideNarrow}`}
-                >
-                  {relativeTime(lastPlayed, lang)}
-                </DateWithTooltip>
-              </div>
+                }
+                playCount={playCount}
+                maxPlays={maxGuestPlays}
+                firstPlayed={firstPlayed}
+                lastPlayed={lastPlayed}
+                lang={lang}
+              />
             )
           )}
         </section>
