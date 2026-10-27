@@ -64,9 +64,8 @@ export async function getStats() {
       .from("artists")
       .select("*", { count: "exact", head: true })
       .is("canonical_artist_id", null),
-    getSupabase()
-      .from("songs")
-      .select("*", { count: "exact", head: true }),
+    // The same title by two spellings of an artist is one song
+    getSupabase().rpc("song_count"),
     getTotalPlayCount(),
   ]);
 
@@ -75,7 +74,7 @@ export async function getStats() {
 
   return {
     artistCount: artists.count ?? 0,
-    songCount: songs.count ?? 0,
+    songCount: (songs.data as number) ?? 0,
     playCount,
   };
 }
