@@ -11,6 +11,20 @@ export const subtitle = style({
   color: vars.color.muted,
 });
 
+/* Links inside running text, like the members of "Faroe5 og Marius DC" */
+
+export const inlineLink = style({
+  textDecorationLine: "underline",
+  textDecorationColor: vars.color.line,
+  textDecorationThickness: "max(1px, 0.05em)",
+  textUnderlineOffset: "0.15em",
+  ":hover": {
+    textDecorationColor: "currentColor",
+    textDecorationThickness: "max(1px, 0.05em)",
+    textUnderlineOffset: "0.15em",
+  },
+});
+
 /* First play, under the intro stats */
 
 export const firstPlay = style({

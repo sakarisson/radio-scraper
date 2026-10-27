@@ -66,6 +66,10 @@ const en = {
   recentPlaysOn: (station: string) => `Recent plays on ${station}`,
   footerText: (since: string | null) =>
     `Tracking Faroese radio since ${since ?? "the beginning"}`,
+  collaborations: "Collaborations",
+  collaborationsHint: "Not included in the totals above",
+  // Before a list of guests, as in "BYRTA featuring Sakaris"
+  featuring: "featuring",
 };
 
 export type Strings = typeof en;
@@ -140,6 +144,9 @@ const fo: Strings = {
     since
       ? `Vit hava fylgt við føroyskum útvarpi síðan ${since}`
       : "Vit fylgja við føroyskum útvarpi",
+  collaborations: "Samstarv",
+  collaborationsHint: "Ikki íroknað í tølunum omanfyri",
+  featuring: "saman við",
 };
 
 export const strings: Record<Lang, Strings> = { en, fo };

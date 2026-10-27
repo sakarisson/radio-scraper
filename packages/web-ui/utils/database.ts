@@ -369,17 +369,27 @@ export async function getArtistPage(artistName: string) {
   const artistId = await findArtistId(artistName);
   if (artistId === null) return null;
 
-  const [plays, firstPlays, totalCount, stations, songs, dailyPlays] =
-    await Promise.all([
-      getArtistPlays(artistId, 10),
-      getArtistPlays(artistId, 1, { oldestFirst: true }),
-      getArtistPlayCount(artistId),
-      rpcRows<any[]>("artist_station_breakdown", { p_artist_id: artistId }),
-      rpcRows<any[]>("artist_songs_overview", { p_artist_id: artistId }),
-      rpcRows<Record<string, number>>("artist_daily_plays", {
-        p_artist_id: artistId,
-      }),
-    ]);
+  const [
+    plays,
+    firstPlays,
+    totalCount,
+    stations,
+    songs,
+    dailyPlays,
+    members,
+    collaborations,
+  ] = await Promise.all([
+    getArtistPlays(artistId, 10),
+    getArtistPlays(artistId, 1, { oldestFirst: true }),
+    getArtistPlayCount(artistId),
+    rpcRows<any[]>("artist_station_breakdown", { p_artist_id: artistId }),
+    rpcRows<any[]>("artist_songs_overview", { p_artist_id: artistId }),
+    rpcRows<Record<string, number>>("artist_daily_plays", {
+      p_artist_id: artistId,
+    }),
+    getCreditMembers(artistId),
+    rpcRows<any[]>("artist_collaborations", { p_artist_id: artistId }),
+  ]);
 
   return {
     plays,
@@ -398,19 +408,36 @@ export async function getArtistPage(artistName: string) {
     })),
     /** Plays per Faroese local date, e.g. { "2025-10-12": 3 } */
     dailyPlays,
+    /** For a combined credit like "Faroe5 og Marius DC", the artists in it */
+    members,
+    /**
+     * Combined credits this artist is part of (songTitle is null), and songs
+     * where they're the guest. Their plays aren't in this artist's totals.
+     */
+    collaborations: collaborations.map((row) => ({
+      creditName: row.credit_name as string,
+      songTitle: row.song_title as string | null,
+      playCount: row.play_count as number,
+      firstPlayed: row.first_played as string,
+      lastPlayed: row.last_played as string,
+    })),
   };
+}
+
+async function getCreditMembers(artistId: number) {
+  const rows = await rpcRows<{ name: string }[]>("artist_credit_members", {
+    p_artist_id: artistId,
+  });
+  return rows.map((row) => row.name);
 }
 
 // ---------------------------------------------------------------------------
 // Songs
 
 async function findSongId(
-  artistName: string,
+  artistId: number,
   songTitle: string
 ): Promise<number | null> {
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-
   const { data, error } = await getSupabase()
     .from("songs")
     .select("id")
@@ -428,35 +455,42 @@ export async function getSongPage(artistName: string, songTitle: string) {
   "use cache";
   cacheLife("live");
 
-  const songId = await findSongId(artistName, songTitle);
+  const artistId = await findArtistId(artistName);
+  if (artistId === null) return null;
+  const songId = await findSongId(artistId, songTitle);
   if (songId === null) return null;
 
-  const [recent, first, count, stations, dailyPlays] = await Promise.all([
-    getSupabase()
-      .from("plays")
-      .select("id, time_played, stations!inner ( slug )")
-      .eq("song_id", songId)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-      .order("time_played", { ascending: false })
-      .limit(10),
-    getSupabase()
-      .from("plays")
-      .select("time_played")
-      .eq("song_id", songId)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false)
-      .order("time_played", { ascending: true })
-      .limit(1),
-    getSupabase()
-      .from("plays")
-      .select("id", { count: "exact", head: true })
-      .eq("song_id", songId)
-      .eq("is_deleted", false)
-      .eq("is_likely_not_music", false),
-    rpcRows<any[]>("song_station_breakdown", { p_song_id: songId }),
-    rpcRows<Record<string, number>>("song_daily_plays", { p_song_id: songId }),
-  ]);
+  const [recent, first, count, stations, dailyPlays, members, guests] =
+    await Promise.all([
+      getSupabase()
+        .from("plays")
+        .select("id, time_played, stations!inner ( slug )")
+        .eq("song_id", songId)
+        .eq("is_deleted", false)
+        .eq("is_likely_not_music", false)
+        .order("time_played", { ascending: false })
+        .limit(10),
+      getSupabase()
+        .from("plays")
+        .select("time_played")
+        .eq("song_id", songId)
+        .eq("is_deleted", false)
+        .eq("is_likely_not_music", false)
+        .order("time_played", { ascending: true })
+        .limit(1),
+      getSupabase()
+        .from("plays")
+        .select("id", { count: "exact", head: true })
+        .eq("song_id", songId)
+        .eq("is_deleted", false)
+        .eq("is_likely_not_music", false),
+      rpcRows<any[]>("song_station_breakdown", { p_song_id: songId }),
+      rpcRows<Record<string, number>>("song_daily_plays", {
+        p_song_id: songId,
+      }),
+      getCreditMembers(artistId),
+      rpcRows<{ name: string }[]>("song_guests", { p_song_id: songId }),
+    ]);
 
   if (recent.error) throw recent.error;
   if (first.error) throw first.error;
@@ -484,6 +518,10 @@ export async function getSongPage(artistName: string, songTitle: string) {
     })),
     /** Plays per Faroese local date, e.g. { "2025-10-12": 3 } */
     dailyPlays,
+    /** For a combined credit like "Faroe5 og Marius DC", the artists in it */
+    members,
+    /** Guests named in the title, like Sakaris in "Frøknur (við Sakaris)" */
+    guests: guests.map((row) => row.name),
   };
 }
 

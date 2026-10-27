@@ -20,6 +20,11 @@ import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
+import {
+  ArtistList,
+  CreditLinks,
+  creditSegments,
+} from "@/app/components/ArtistCredit";
 
 const paramsSchema = z
   .object({
@@ -74,13 +79,23 @@ export default async function ArtistPage({
     notFound();
   }
 
-  const { plays, firstPlay, totalCount, stationBreakdown, dailyPlays } = artist;
+  const {
+    plays,
+    firstPlay,
+    totalCount,
+    stationBreakdown,
+    dailyPlays,
+    members,
+    collaborations,
+  } = artist;
   const songs = [...artist.songs].sort((a, b) =>
     sort === "plays"
       ? b.playCount - a.playCount
       : new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime()
   );
   const maxSongPlays = Math.max(1, ...songs.map((s) => s.playCount));
+  const maxCollabPlays = Math.max(1, ...collaborations.map((c) => c.playCount));
+  const credit = creditSegments(artistName, members);
   const artistHref = r.artist(artistName);
 
   function sortHref(key: (typeof sortOptions)[number]["key"]) {
@@ -92,7 +107,14 @@ export default async function ArtistPage({
       <Breadcrumbs items={[{ href: r.artists, label: s.artists }]} />
 
       <section className={ui.intro.detail}>
-        <h1 className={ui.display.lg}>{artistName}</h1>
+        <h1 className={ui.display.lg}>
+          {credit ? <CreditLinks segments={credit} lang={lang} /> : artistName}
+        </h1>
+        {!credit && members.length > 0 && (
+          <p className={styles.subtitle}>
+            <ArtistList names={members} lang={lang} />
+          </p>
+        )}
         <div className={ui.introStats}>
           <Stats
             items={[
@@ -213,6 +235,72 @@ export default async function ArtistPage({
               </DateWithTooltip>
             </div>
           ))}
+        </section>
+      )}
+
+      {collaborations.length > 0 && (
+        <section className={ui.section.lg}>
+          <div className={ui.sectionHeader}>
+            <h2 className={ui.sectionTitle}>{s.collaborations}</h2>
+            <span className={ui.muted}>{s.collaborationsHint}</span>
+          </div>
+          <div className={`${styles.songHeader} ${ui.row}`}>
+            <span />
+            <span>{s.plays}</span>
+            <span className={styles.hideMedium}>{s.firstPlayed}</span>
+            <span className={styles.hideNarrow}>{s.lastPlayed}</span>
+          </div>
+          {collaborations.map(
+            ({ creditName, songTitle, playCount, firstPlayed, lastPlayed }) => (
+              <div
+                key={`${creditName}/${songTitle ?? ""}`}
+                className={`${styles.songRow} ${ui.row}`}
+              >
+                {songTitle === null ? (
+                  <Link href={r.artist(creditName)} className={styles.songTitle}>
+                    {creditName}
+                  </Link>
+                ) : (
+                  <span className={ui.itemText}>
+                    <Link
+                      href={r.song(creditName, songTitle)}
+                      className={styles.songTitle}
+                    >
+                      {songTitle}
+                    </Link>
+                    <Link href={r.artist(creditName)} className={ui.itemSub}>
+                      {creditName}
+                    </Link>
+                  </span>
+                )}
+                <div className={styles.playsCell}>
+                  <span className={styles.playsNumber}>
+                    {formatNumber(playCount, lang)}
+                  </span>
+                  <div className={`${ui.thinTrack} ${styles.playsTrack}`}>
+                    <div
+                      className={ui.thinFill}
+                      style={{ width: `${(playCount / maxCollabPlays) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <DateWithTooltip
+                  date={firstPlayed}
+                  lang={lang}
+                  className={`${ui.muted} ${styles.hideMedium}`}
+                >
+                  {relativeTime(firstPlayed, lang)}
+                </DateWithTooltip>
+                <DateWithTooltip
+                  date={lastPlayed}
+                  lang={lang}
+                  className={`${ui.muted} ${styles.hideNarrow}`}
+                >
+                  {relativeTime(lastPlayed, lang)}
+                </DateWithTooltip>
+              </div>
+            )
+          )}
         </section>
       )}
 

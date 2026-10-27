@@ -19,6 +19,11 @@ import { StationLink } from "@/app/components/Station";
 import { StationSplit } from "@/app/components/StationSplit";
 import { Stats } from "@/app/components/Stats";
 import { PlayCalendar } from "@/app/components/PlayCalendar";
+import {
+  ArtistList,
+  CreditLinks,
+  creditSegments,
+} from "@/app/components/ArtistCredit";
 
 export default async function SongPage({
   params,
@@ -40,8 +45,17 @@ export default async function SongPage({
     notFound();
   }
 
-  const { plays, totalCount, playRange, stationBreakdown, dailyPlays } = page;
+  const {
+    plays,
+    totalCount,
+    playRange,
+    stationBreakdown,
+    dailyPlays,
+    members,
+    guests,
+  } = page;
   const artistHref = r.artist(artistName);
+  const credit = creditSegments(artistName, members);
 
   return (
     <>
@@ -54,9 +68,21 @@ export default async function SongPage({
 
       <section className={ui.intro.detail}>
         <h1 className={ui.display.lg}>{songTitle}</h1>
-        <Link href={artistHref} className={styles.subtitle}>
-          {artistName}
-        </Link>
+        <p className={styles.subtitle}>
+          {credit ? (
+            <CreditLinks segments={credit} lang={lang} />
+          ) : (
+            <Link href={artistHref} className={styles.inlineLink}>
+              {artistName}
+            </Link>
+          )}
+          {guests.length > 0 && (
+            <>
+              {` · ${s.featuring} `}
+              <ArtistList names={guests} lang={lang} />
+            </>
+          )}
+        </p>
         <div className={ui.introStats}>
           <Stats
             items={[
