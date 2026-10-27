@@ -70,6 +70,8 @@ const en = {
   collaborationsHint: "Not included in the totals above",
   // Before a list of guests, as in "BYRTA featuring Sakaris"
   featuring: "featuring",
+  // Before the other spellings stations have used for an artist
+  alsoSpelled: "Also spelled",
 };
 
 export type Strings = typeof en;
@@ -147,6 +149,7 @@ const fo: Strings = {
   collaborations: "Samstarv",
   collaborationsHint: "Ikki íroknað í tølunum omanfyri",
   featuring: "saman við",
+  alsoSpelled: "Eisini stavað",
 };
 
 export const strings: Record<Lang, Strings> = { en, fo };

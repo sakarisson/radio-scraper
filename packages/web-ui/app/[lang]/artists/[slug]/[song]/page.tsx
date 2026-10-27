@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSongPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
@@ -43,6 +43,10 @@ export default async function SongPage({
   const page = await getSongPage(artistName, songTitle);
   if (page === null) {
     notFound();
+  }
+  // Credited to another spelling of an artist: show it under the artist
+  if (page.redirectTo !== null) {
+    redirect(r.song(page.redirectTo, songTitle));
   }
 
   const {
