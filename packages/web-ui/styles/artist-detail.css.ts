@@ -25,6 +25,17 @@ export const inlineLink = style({
   },
 });
 
+/* Other spellings of the artist, under the name */
+
+export const akas = style({
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "4px 12px",
+  marginTop: "16px",
+  fontSize: "15px",
+  overflowWrap: "anywhere",
+});
+
 /* First play, under the intro stats */
 
 export const firstPlay = style({

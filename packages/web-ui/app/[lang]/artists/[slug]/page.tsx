@@ -1,7 +1,7 @@
 import { z } from "zod";
 import Link from "next/link";
 import { connection } from "next/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getArtistPage } from "@/utils/database";
 import * as styles from "@/styles/artist-detail.css";
 import * as ui from "@/styles/ui.css";
@@ -78,8 +78,13 @@ export default async function ArtistPage({
   if (artist === null) {
     notFound();
   }
+  // Another spelling of an artist: show the artist's own page
+  if (artist.redirectTo !== null) {
+    redirect(r.artist(artist.redirectTo));
+  }
 
   const {
+    akaNames,
     plays,
     firstPlay,
     totalCount,
@@ -113,6 +118,12 @@ export default async function ArtistPage({
         {!credit && members.length > 0 && (
           <p className={styles.subtitle}>
             <ArtistList names={members} lang={lang} />
+          </p>
+        )}
+        {akaNames.length > 0 && (
+          <p className={styles.akas}>
+            <span className={ui.muted}>{s.alsoSpelled}</span>
+            <span>{akaNames.join(" · ")}</span>
           </p>
         )}
         <div className={ui.introStats}>

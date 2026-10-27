@@ -59,12 +59,13 @@ export async function getStats() {
   cacheLife("stats");
 
   const [artists, songs, playCount] = await Promise.all([
+    // Akas are other spellings of an artist, not artists of their own
     getSupabase()
       .from("artists")
-      .select("*", { count: "exact", head: true }),
-    getSupabase()
-      .from("songs")
-      .select("*", { count: "exact", head: true }),
+      .select("*", { count: "exact", head: true })
+      .is("canonical_artist_id", null),
+    // The same title by two spellings of an artist is one song
+    getSupabase().rpc("song_count"),
     getTotalPlayCount(),
   ]);
 
@@ -73,7 +74,7 @@ export async function getStats() {
 
   return {
     artistCount: artists.count ?? 0,
-    songCount: songs.count ?? 0,
+    songCount: (songs.data as number) ?? 0,
     playCount,
   };
 }
@@ -301,19 +302,56 @@ export async function getArtistCountWithPlays(
   return (data as number) ?? 0;
 }
 
-async function findArtistId(artistName: string): Promise<number | null> {
+/** A canonical artist with its other spellings (akas). */
+type ArtistFamily = {
+  id: number;
+  /** The artist's own id first, then its akas */
+  familyIds: number[];
+  akaNames: string[];
+};
+
+/**
+ * The artist with this exact name. An aka resolves to the name of its
+ * canonical artist instead, so its page can redirect there.
+ */
+async function findArtist(
+  artistName: string
+): Promise<ArtistFamily | { canonicalName: string } | null> {
   const { data, error } = await getSupabase()
     .from("artists")
-    .select("id")
+    .select("id, canonical_artist_id")
     .eq("name", artistName)
     .maybeSingle();
 
   if (error) throw error;
-  return data?.id ?? null;
+  if (!data) return null;
+
+  if (data.canonical_artist_id !== null) {
+    const canonical = await getSupabase()
+      .from("artists")
+      .select("name")
+      .eq("id", data.canonical_artist_id)
+      .single();
+    if (canonical.error) throw canonical.error;
+    return { canonicalName: canonical.data.name as string };
+  }
+
+  const akas = await getSupabase()
+    .from("artists")
+    .select("id, name")
+    .eq("canonical_artist_id", data.id)
+    .order("name");
+  if (akas.error) throw akas.error;
+
+  return {
+    id: data.id as number,
+    familyIds: [data.id as number, ...akas.data.map((a) => a.id as number)],
+    akaNames: akas.data.map((a) => a.name as string),
+  };
 }
 
 async function getArtistPlays(
-  artistId: number,
+  artistIds: number[],
   limit: number,
   { oldestFirst = false }: { oldestFirst?: boolean } = {}
 ) {
@@ -327,7 +365,7 @@ async function getArtistPlays(
       stations!inner ( slug )
     `
     )
-    .eq("songs.artist_id", artistId)
+    .in("songs.artist_id", artistIds)
     .eq("is_deleted", false)
     .eq("is_likely_not_music", false)
     .order("time_played", { ascending: oldestFirst })
@@ -343,11 +381,11 @@ async function getArtistPlays(
   }));
 }
 
-async function getArtistPlayCount(artistId: number) {
+async function getArtistPlayCount(artistIds: number[]) {
   const { count, error } = await getSupabase()
     .from("plays")
     .select("id, songs!inner(artist_id)", { count: "exact", head: true })
-    .eq("songs.artist_id", artistId)
+    .in("songs.artist_id", artistIds)
     .eq("is_deleted", false)
     .eq("is_likely_not_music", false);
 
@@ -361,13 +399,19 @@ async function rpcRows<T>(fn: string, args: Record<string, unknown>) {
   return (data ?? []) as T;
 }
 
-/** Everything the artist page shows, or null if there's no such artist. */
+/**
+ * Everything the artist page shows, counting the artist's akas as the
+ * artist. For an aka, only the canonical artist's name to redirect to, and
+ * null if there's no such artist.
+ */
 export async function getArtistPage(artistName: string) {
   "use cache";
   cacheLife("live");
 
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
+  const artist = await findArtist(artistName);
+  if (artist === null) return null;
+  if ("canonicalName" in artist) return { redirectTo: artist.canonicalName };
+  const { id: artistId, familyIds, akaNames } = artist;
 
   const [
     plays,
@@ -379,9 +423,9 @@ export async function getArtistPage(artistName: string) {
     members,
     collaborations,
   ] = await Promise.all([
-    getArtistPlays(artistId, 10),
-    getArtistPlays(artistId, 1, { oldestFirst: true }),
-    getArtistPlayCount(artistId),
+    getArtistPlays(familyIds, 10),
+    getArtistPlays(familyIds, 1, { oldestFirst: true }),
+    getArtistPlayCount(familyIds),
     rpcRows<any[]>("artist_station_breakdown", { p_artist_id: artistId }),
     rpcRows<any[]>("artist_songs_overview", { p_artist_id: artistId }),
     rpcRows<Record<string, number>>("artist_daily_plays", {
@@ -392,6 +436,9 @@ export async function getArtistPage(artistName: string) {
   ]);
 
   return {
+    redirectTo: null,
+    /** Other spellings stations have used for this artist */
+    akaNames,
     plays,
     firstPlay: firstPlays[0] ?? null,
     totalCount,
@@ -434,38 +481,47 @@ async function getCreditMembers(artistId: number) {
 // ---------------------------------------------------------------------------
 // Songs
 
-async function findSongId(
-  artistId: number,
+/**
+ * The songs with this title, ignoring case, by the artist or one of its
+ * akas. They count as one song. Same set as song_family() in the database.
+ */
+async function findSongIds(
+  artistIds: number[],
   songTitle: string
-): Promise<number | null> {
+): Promise<number[]> {
   const { data, error } = await getSupabase()
     .from("songs")
     .select("id")
-    .eq("artist_id", artistId)
+    .in("artist_id", artistIds)
     .ilike("title", escapeLike(songTitle))
-    .limit(1)
-    .maybeSingle();
+    .order("id");
 
   if (error) throw error;
-  return data?.id ?? null;
+  return data.map((row) => row.id as number);
 }
 
-/** Everything the song page shows, or null if there's no such song. */
+/**
+ * Everything the song page shows, counting the same title by the artist's
+ * akas. For an aka, only the canonical artist's name to redirect to, and
+ * null if there's no such song.
+ */
 export async function getSongPage(artistName: string, songTitle: string) {
   "use cache";
   cacheLife("live");
 
-  const artistId = await findArtistId(artistName);
-  if (artistId === null) return null;
-  const songId = await findSongId(artistId, songTitle);
-  if (songId === null) return null;
+  const artist = await findArtist(artistName);
+  if (artist === null) return null;
+  if ("canonicalName" in artist) return { redirectTo: artist.canonicalName };
+  const songIds = await findSongIds(artist.familyIds, songTitle);
+  if (songIds.length === 0) return null;
+  const songId = songIds[0];
 
   const [recent, first, count, stations, dailyPlays, members, guests] =
     await Promise.all([
       getSupabase()
         .from("plays")
         .select("id, time_played, stations!inner ( slug )")
-        .eq("song_id", songId)
+        .in("song_id", songIds)
         .eq("is_deleted", false)
         .eq("is_likely_not_music", false)
         .order("time_played", { ascending: false })
@@ -473,7 +529,7 @@ export async function getSongPage(artistName: string, songTitle: string) {
       getSupabase()
         .from("plays")
         .select("time_played")
-        .eq("song_id", songId)
+        .in("song_id", songIds)
         .eq("is_deleted", false)
         .eq("is_likely_not_music", false)
         .order("time_played", { ascending: true })
@@ -481,14 +537,14 @@ export async function getSongPage(artistName: string, songTitle: string) {
       getSupabase()
         .from("plays")
         .select("id", { count: "exact", head: true })
-        .eq("song_id", songId)
+        .in("song_id", songIds)
         .eq("is_deleted", false)
         .eq("is_likely_not_music", false),
       rpcRows<any[]>("song_station_breakdown", { p_song_id: songId }),
       rpcRows<Record<string, number>>("song_daily_plays", {
         p_song_id: songId,
       }),
-      getCreditMembers(artistId),
+      getCreditMembers(artist.id),
       rpcRows<{ name: string }[]>("song_guests", { p_song_id: songId }),
     ]);
 
@@ -503,6 +559,7 @@ export async function getSongPage(artistName: string, songTitle: string) {
   }));
 
   return {
+    redirectTo: null,
     plays,
     totalCount: count.count ?? 0,
     playRange:
